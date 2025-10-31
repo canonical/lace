@@ -1,2 +1,24 @@
-/target
+# Rust executable outputs
+/laceboot
+/laceboot-static
+
+# Rust debug files
+**/*.rs.bk
+
+# build-efi disk
+/efi.img
+
+# IDE / LSP files
+/compile_commands.json
+/workspace.code-workspace
+/.cache
+
+# github files
+/.github
+
+# images and EFI files
+/*.fd
+/*.img
+
+# test directories
 /vm
