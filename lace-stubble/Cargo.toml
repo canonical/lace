@@ -1,0 +1,8 @@
+[package]
+name = "lace-stubble"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+lace-util = { version = "0.1.0", path = "../lace-util" }
+uefi = "0.36.0"
