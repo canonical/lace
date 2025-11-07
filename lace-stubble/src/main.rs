@@ -26,7 +26,7 @@ fn main() -> Status {
     uefi::println!("UEFI main()");
 
 
-    let s: &'static _ = find_start_of_smbios_tables().unwrap();
+    let s: &'static _ = find_smbios_tables().unwrap();
     uefi::println!("SMBIOS table {:#?} {}", s.as_ptr(), s.len());
     hexdump(s);
 
@@ -49,7 +49,7 @@ fn hexdump(s: &[u8]) {
     }
 }
 
-fn find_start_of_smbios_tables() -> Option<&'static [u8]> {
+fn find_smbios_tables() -> Option<&'static [u8]> {
     unsafe {
         if let Some(ptr) = find_config_table::<Smbios3EntryPoint>(ConfigTableEntry::SMBIOS3_GUID) {
             if (*ptr).anchor_string.eq(b"_SM3_") {
