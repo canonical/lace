@@ -5,7 +5,8 @@
 use core::marker::PhantomData;
 use zerocopy::{FromBytes, Immutable, KnownLayout};
 
-#[repr(C, packed)]
+#[repr(C,packed)]
+#[derive(Clone,Copy,Debug)]
 pub struct SmbiosEntryPoint {
     pub anchor_string: [u8; 4],
     pub entry_point_structure_checksum: u8,
@@ -23,7 +24,8 @@ pub struct SmbiosEntryPoint {
     pub smbios_bcd_revision: u8,
 }
 
-#[repr(C, packed)]
+#[repr(C,packed)]
+#[derive(Clone,Copy,Debug)]
 pub struct Smbios3EntryPoint {
     pub anchor_string: [u8; 5],
     pub entry_point_structure_checksum: u8,
@@ -37,16 +39,16 @@ pub struct Smbios3EntryPoint {
     pub table_address: u64,
 }
 
-#[repr(C, packed)]
-#[derive(FromBytes,Immutable,KnownLayout)]
+#[repr(C,packed)]
+#[derive(Clone,Copy,Debug,FromBytes,Immutable,KnownLayout)]
 pub struct SmbiosHeader {
     pub type_: u8,
     pub length: u8,
     pub handle: [u8; 2],
 }
 
-#[repr(C, packed)]
-#[derive(FromBytes,Immutable,KnownLayout)]
+#[repr(C,packed)]
+#[derive(Clone,Copy,Debug,FromBytes,Immutable,KnownLayout)]
 pub struct SmbiosTableType0 {
     pub header: SmbiosHeader,
     pub vendor: u8,
@@ -58,8 +60,8 @@ pub struct SmbiosTableType0 {
     pub bios_characteristics_ext: [u8; 2],
 }
 
-#[repr(C, packed)]
-#[derive(FromBytes,Immutable,KnownLayout)]
+#[repr(C,packed)]
+#[derive(Clone,Copy,Debug,FromBytes,Immutable,KnownLayout)]
 pub struct SmbiosTableType1 {
     pub header: SmbiosHeader,
     pub manufacturer: u8,
@@ -73,8 +75,8 @@ pub struct SmbiosTableType1 {
 }
 
 
-#[repr(C, packed)]
-#[derive(FromBytes,Immutable,KnownLayout)]
+#[repr(C,packed)]
+#[derive(Clone,Copy,Debug,FromBytes,Immutable,KnownLayout)]
 pub struct EFI_GUID {
     pub data1: u32,
     pub data2: u16,
@@ -82,8 +84,8 @@ pub struct EFI_GUID {
     pub data4: [u8; 8],
 }
 
-#[repr(C, packed)]
-#[derive(FromBytes,Immutable,KnownLayout)]
+#[repr(C,packed)]
+#[derive(Clone,Copy,Debug,FromBytes,Immutable,KnownLayout)]
 pub struct SmbiosTableType2 {
     pub header: SmbiosHeader,
     pub manufacturer: u8,
@@ -92,7 +94,7 @@ pub struct SmbiosTableType2 {
     pub serial_number: u8,
 }
 
-#[derive(Debug)]
+#[derive(Clone,Copy,Debug,Eq,PartialEq)]
 pub enum SmbiosError {
     TableNotFound,
     InvalidTable,

@@ -7,11 +7,10 @@
 #![no_std]
 #![cfg(not(test))]
 
-use lace_util::smbios::Smbios3EntryPoint;
-use lace_util::smbios::SmbiosEntryPoint;
 use uefi::Guid;
 use uefi::prelude::*;
 use uefi::table::cfg::ConfigTableEntry;
+use lace_util::smbios::*;
 
 /*
 #[panic_handler]
@@ -25,10 +24,19 @@ fn main() -> Status {
     uefi::helpers::init().unwrap();
     uefi::println!("UEFI main()");
 
-
     let s: &'static _ = find_smbios_tables().unwrap();
     uefi::println!("SMBIOS table {:#?} {}", s.as_ptr(), s.len());
     hexdump(s);
+
+    let smbios0 = find_smbios_table_by_type::<SmbiosTableType0>(s, 0)
+        .expect("need table 0");
+    uefi::println!("{:#x?}", smbios0.table());
+    let smbios1 = find_smbios_table_by_type::<SmbiosTableType1>(s, 1)
+        .expect("need table 1");
+    uefi::println!("{:#x?}", smbios1.table());
+
+    let not_found = find_smbios_table_by_type::<SmbiosHeader>(s, 42);
+    assert!(matches!(not_found, Err(SmbiosError::TableNotFound)));
 
     loop {}
 }
