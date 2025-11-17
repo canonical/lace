@@ -5,25 +5,25 @@
 use core::alloc::GlobalAlloc;
 
 trait Platform: GlobalAlloc {
-	type Error;
-	type PhysicalAddress;
+    type Error;
+    type PhysicalAddress;
 
-	fn get_memory_map();
+    fn get_memory_map();
 
-	fn allocate_pages(number_of_pages: usize) -> *mut u8;
+    fn allocate_pages(number_of_pages: usize) -> *mut u8;
 
-	fn free_pages(ptr: *mut u8);
+    fn free_pages(ptr: *mut u8);
 
-	fn physical_address_to_pointer(address: Self::PhysicalAddress) -> *mut u8;
+    fn physical_address_to_pointer(address: Self::PhysicalAddress) -> *mut u8;
 
-	fn match_dtb(dtb: &[u8]) -> Result<bool, Self::Error>;
+    fn match_dtb(dtb: &[u8]) -> Result<bool, Self::Error>;
 
-	fn boot_linux(cfg: BootLinuxConfig) -> Result<(), Self::Error>;
+    fn boot_linux(cfg: BootLinuxConfig) -> Result<(), Self::Error>;
 }
 
 struct BootLinuxConfig<'kernel, 'initrd, 'dtb, 'cmdline> {
-	kernel: &'kernel [u8],
-	initrd: Option<&'initrd [u8]>,
-	dtb: Option<&'dtb [u8]>,
-	cmdline: &'cmdline [u8],
+    kernel: &'kernel [u8],
+    initrd: Option<&'initrd [u8]>,
+    dtb: Option<&'dtb [u8]>,
+    cmdline: &'cmdline [u8],
 }
