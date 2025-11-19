@@ -9,10 +9,11 @@
 
 use lace_util::peimage;
 use lace_util::smbios::*;
-use uefi::Guid;
 use uefi::boot;
+use uefi::Guid;
 use uefi::prelude::*;
 use uefi::proto::loaded_image::LoadedImage;
+use uefi::system;
 use uefi::table::cfg::ConfigTableEntry;
 
 #[entry]
@@ -23,7 +24,7 @@ fn main() -> Status {
     // Parse SMBIOS
     let s: &'static _ = find_smbios_tables().unwrap();
     uefi::println!("SMBIOS table {:#?} {}", s.as_ptr(), s.len());
-    hexdump(s);
+    system::with_stdout(|w| lace_util::hexdump(w, s)).unwrap();
 
     let smbios0 = find_smbios_table_by_type::<SmbiosTableType0>(s, 0).expect("need table 0");
     uefi::println!("{:#x?}", smbios0.table());
@@ -49,22 +50,6 @@ fn main() -> Status {
     }
 
     loop {}
-}
-
-fn hexdump(s: &[u8]) {
-    for (i, b) in s.iter().enumerate() {
-        if i % 16 == 0 {
-            uefi::print!("{:04x} ", i)
-        }
-        uefi::print!("{:02x}", b);
-        if (i + 1) % 16 == 0 || i + 1 == s.len() {
-            uefi::println!()
-        } else if (i + 1) % 8 == 0 {
-            uefi::print!("  ")
-        } else {
-            uefi::print!(" ")
-        }
-    }
 }
 
 fn find_smbios_tables() -> Option<&'static [u8]> {
