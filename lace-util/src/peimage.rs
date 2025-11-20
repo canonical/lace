@@ -2,14 +2,14 @@
 // Copyright (C) 2025, Canonical Ltd.
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 
-use core::mem::offset_of;
-use zerocopy::{FromBytes, Immutable, KnownLayout};
+use core::{fmt::Display, mem::offset_of};
+use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 pub const DOS_SIGNATURE: u16 = b'M' as u16 | (b'Z' as u16) << 8;
 pub const NT_SIGNATURE: u32 = b'P' as u32 | (b'E' as u32) << 8;
 
 #[repr(C)]
-#[derive(Debug, FromBytes, Immutable, KnownLayout)]
+#[derive(Clone, Debug, FromBytes, IntoBytes, Immutable, KnownLayout)]
 pub struct DosHeader {
     pub e_magic: u16,
     pub e_cblp: u16,
@@ -33,7 +33,7 @@ pub struct DosHeader {
 }
 
 #[repr(C)]
-#[derive(Debug, FromBytes, Immutable, KnownLayout)]
+#[derive(Clone, Debug, FromBytes, IntoBytes, Immutable, KnownLayout)]
 pub struct FileHeader {
     pub machine: u16,
     pub number_of_sections: u16,
@@ -45,7 +45,7 @@ pub struct FileHeader {
 }
 
 #[repr(C)]
-#[derive(Debug, FromBytes, Immutable, KnownLayout)]
+#[derive(Clone, Debug, FromBytes, IntoBytes, Immutable, KnownLayout)]
 pub struct DataDirectory {
     pub virtual_address: u32,
     pub size: u32,
@@ -68,7 +68,7 @@ pub const NUMBER_OF_DIRECTORY_ENTRIES: usize = 16;
 pub const NT_OPTIONAL_HDR64_MAGIC: u16 = 0x20b;
 
 #[repr(C)]
-#[derive(Debug, FromBytes, Immutable, KnownLayout)]
+#[derive(Clone, Debug, FromBytes, IntoBytes, Immutable, KnownLayout)]
 pub struct OptionalHeader64 {
     pub magic: u16,
     pub major_linker_version: u8,
@@ -103,7 +103,7 @@ pub struct OptionalHeader64 {
 }
 
 #[repr(C)]
-#[derive(Debug, FromBytes, Immutable, KnownLayout)]
+#[derive(Clone, Debug, FromBytes, IntoBytes, Immutable, KnownLayout)]
 pub struct NtHeaders64 {
     pub signature: u32,
     pub file_header: FileHeader,
@@ -111,7 +111,7 @@ pub struct NtHeaders64 {
 }
 
 #[repr(C)]
-#[derive(Debug, FromBytes, Immutable, KnownLayout)]
+#[derive(Clone, Debug, FromBytes, IntoBytes, Immutable, KnownLayout)]
 pub struct SectionHeader {
     pub name: [u8; 8],
     pub virtual_size: u32,
@@ -125,6 +125,18 @@ pub struct SectionHeader {
     pub characteristics: u32,
 }
 
+pub const SCN_CNT_CODE: u32 = 0x00000020;
+pub const SCN_CNT_INITIALIZED_DATA: u32 = 0x00000040;
+pub const SCN_CNT_UNINITIALIZED_DATA: u32 = 0x00000080;
+
+pub const SCN_MEM_DISCARDABLE: u32 = 0x02000000;
+pub const SCN_MEM_NOT_CACHED: u32 = 0x04000000;
+pub const SCN_MEM_NOT_PAGED: u32 = 0x08000000;
+pub const SCN_MEM_SHARED: u32 = 0x10000000;
+pub const SCN_MEM_EXECUTE: u32 = 0x20000000;
+pub const SCN_MEM_READ: u32 = 0x40000000;
+pub const SCN_MEM_WRITE: u32 = 0x80000000;
+
 impl SectionHeader {
     pub fn name(&self) -> &[u8] {
         let mut end_i = 0;
@@ -135,11 +147,13 @@ impl SectionHeader {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct PeRef<'a> {
     pub data: &'a [u8],
     pub dos_hdr: &'a DosHeader,
+    pub dos_data: &'a [u8],
     pub nt_hdrs: &'a NtHeaders64,
+    pub nt_data: &'a [u8],
     pub sect_hdrs: &'a [SectionHeader],
 }
 
@@ -154,15 +168,24 @@ impl<'a> PeRef<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum PeParseError {
     Truncated,
     BadHeader,
 }
 
+impl Display for PeParseError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Truncated => write!(f, "image truncated"),
+            Self::BadHeader => write!(f, "image has bad header"),
+        }
+    }
+}
+
 pub fn parse_pe<'a>(s: &'a [u8]) -> Result<PeRef<'a>, PeParseError> {
     // Get and validate the DOS header
-    let Ok((dos_hdr, _)) = DosHeader::ref_from_prefix(s) else {
+    let Ok((dos_hdr, dos_data)) = DosHeader::ref_from_prefix(s) else {
         return Err(PeParseError::Truncated);
     };
     if dos_hdr.e_magic != DOS_SIGNATURE {
@@ -170,14 +193,19 @@ pub fn parse_pe<'a>(s: &'a [u8]) -> Result<PeRef<'a>, PeParseError> {
     }
 
     // Get and validate the 64-bit NT headers
-    let Some((nt_hdrs, _)) = s
+    let Some((nt_hdrs, nt_data)) = s
         .get(dos_hdr.e_lfanew as usize..)
         .and_then(|s| NtHeaders64::ref_from_prefix(s).ok())
     else {
         return Err(PeParseError::Truncated);
     };
-    if nt_hdrs.signature != NT_SIGNATURE || nt_hdrs.optional_header.magic != NT_OPTIONAL_HDR64_MAGIC
-    {
+    if nt_hdrs.signature != NT_SIGNATURE {
+        return Err(PeParseError::BadHeader);
+    }
+    if (nt_hdrs.file_header.size_of_optional_header as usize) < size_of::<OptionalHeader64>() {
+        return Err(PeParseError::Truncated);
+    }
+    if nt_hdrs.optional_header.magic != NT_OPTIONAL_HDR64_MAGIC {
         return Err(PeParseError::BadHeader);
     }
 
@@ -200,7 +228,10 @@ pub fn parse_pe<'a>(s: &'a [u8]) -> Result<PeRef<'a>, PeParseError> {
     Ok(PeRef {
         data: s,
         dos_hdr,
+        dos_data: &dos_data[..dos_hdr.e_lfanew as usize - size_of::<DosHeader>()],
         nt_hdrs,
+        nt_data: &nt_data[..nt_hdrs.file_header.size_of_optional_header as usize
+            - size_of::<OptionalHeader64>()],
         sect_hdrs,
     })
 }

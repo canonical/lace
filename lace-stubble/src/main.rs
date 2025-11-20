@@ -9,8 +9,8 @@
 
 use lace_util::peimage;
 use lace_util::smbios::*;
-use uefi::boot;
 use uefi::Guid;
+use uefi::boot;
 use uefi::prelude::*;
 use uefi::proto::loaded_image::LoadedImage;
 use uefi::system;
@@ -46,7 +46,7 @@ fn main() -> Status {
 
     uefi::println!("PE sections");
     for sect in pe.sect_hdrs.iter() {
-        uefi::println!("{:#x?}", str::from_utf8(&sect.name).unwrap());
+        uefi::println!("{:#x?}", str::from_utf8(sect.name()).unwrap());
     }
 
     loop {}

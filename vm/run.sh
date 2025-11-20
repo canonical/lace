@@ -4,10 +4,11 @@ cd $(dirname $0)
 
 pushd ..
 cargo build -p lace-stubble --target x86_64-unknown-uefi
+cargo run -p pewrap -- \
+	--stub target/x86_64-unknown-uefi/debug/lace-stubble.efi \
+	--output vm/stubble.efi \
+	--linux /vmlinuz
 popd
-
-objcopy \
-    ../target/x86_64-unknown-uefi/debug/lace-stubble.efi stubble.efi
 
 mcopy \
 	-o \

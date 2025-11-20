@@ -37,3 +37,31 @@ pub fn hexdump<W: Write>(mut w: W, s: &[u8]) -> fmt::Result {
     }
     Ok(())
 }
+
+#[macro_export]
+macro_rules! align_up {
+    ($val:expr, $bound:expr $(,)?) => {
+        ($val + $bound - 1) / $bound * $bound
+    };
+}
+
+#[macro_export]
+macro_rules! align_down {
+    ($val:expr, $bound:expr $(,)?) => {
+        $val / $bound * $bound
+    };
+}
+
+#[macro_export]
+macro_rules! count_blocks_aligned_up {
+    ($val:expr, $block_size:expr $(,)?) => {
+        ($val + $block_size - 1) / $block_size
+    };
+}
+
+#[macro_export]
+macro_rules! count_blocks_aligned_down {
+    ($val:expr, $block_size:expr $(,)?) => {
+        $val / $block_size
+    };
+}
