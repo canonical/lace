@@ -1,3 +1,6 @@
+# Cargo build target
+/target
+
 # Rust executable outputs
 /laceboot
 /laceboot-static
