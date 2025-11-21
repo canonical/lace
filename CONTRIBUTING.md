@@ -51,5 +51,30 @@ Examples:
 - `lace-util/smbios: Fix parsing of type 3 tables`
 - `lace-util/lib: Refactor GUID handling for clarity`
 
+## Development Setup
+
+This repository uses [pre-commit](https://pre-commit.com/) hooks to ensure code
+quality. To set up pre-commit hooks:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+The hooks will run automatically on `git commit` and include:
+- Code formatting checks (`cargo fmt`)
+- Compilation checks (`cargo check`)
+- Lint checks (`cargo clippy`)
+- Unit tests (`cargo test`)
+- General file checks (trailing whitespace, YAML/TOML syntax, etc.)
+
+**Before committing**, you can run the hooks manually to catch issues early:
+```bash
+pre-commit run --all-files
+```
+
+If pre-commit is installed, it will automatically run on every commit and prevent
+commits with failing checks. This ensures all code meets quality standards before
+being pushed to the repository.
 
 [cla]: https://ubuntu.com/legal/contributors

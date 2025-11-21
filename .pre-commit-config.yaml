@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(ulib|data/hwids)/
+      - id: end-of-file-fixer
+        exclude: ^(ulib|data/hwids)/
+      - id: check-yaml
+        exclude: ^(ulib|data/hwids)/
+      - id: check-toml
+      - id: check-added-large-files
+
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        description: Format Rust code with rustfmt
+        entry: ./scripts/cargo_ci.py fmt --all
+        language: system
+        types: [rust]
+        pass_filenames: false
+
+      - id: cargo-check
+        name: cargo check
+        description: Check that Rust code compiles
+        entry: ./scripts/cargo_ci.py check --workspace --exclude lace-boot
+        language: system
+        types: [rust]
+        pass_filenames: false
+
+      - id: cargo-clippy
+        name: cargo clippy
+        description: Run Clippy lints
+        entry: ./scripts/cargo_ci.py clippy --workspace -- -D warnings
+        language: system
+        types: [rust]
+        pass_filenames: false
+
+      - id: cargo-test
+        name: cargo test
+        description: Run unit tests
+        entry: ./scripts/cargo_ci.py test --workspace --exclude lace-stubble --exclude fakeedid --exclude u-boot-sys
+        language: system
+        types: [rust]
+        pass_filenames: false

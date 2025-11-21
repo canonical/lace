@@ -92,19 +92,13 @@ All Lace code (excluding `ulib/`) uses dual licensing:
 ### Quick Build Commands
 
 ```bash
-# Format check (always run before committing)
-./scripts/cargo_ci.py fmt --all -- --check
+# Run all pre-commit checks (formatting, linting, compilation, and tests)
+pre-commit run --all-files
 
-# Format code
+# Format code only (if not using pre-commit)
 ./scripts/cargo_ci.py fmt --all
 
-# Clippy (treats warnings as errors)
-./scripts/cargo_ci.py clippy --workspace -- -D warnings
-
-# Type check
-./scripts/cargo_ci.py check --workspace --exclude lace-boot
-
-# Run tests
+# Run tests only (if not using pre-commit)
 ./scripts/cargo_ci.py test --workspace --exclude lace-stubble --exclude fakeedid --exclude u-boot-sys
 
 # Only run these if you modified lace-boot:
@@ -115,6 +109,8 @@ All Lace code (excluding `ulib/`) uses dual licensing:
 make -C lace-boot config all BOARD=sandbox
 make -C lace-boot config all BOARD=efi-x86_app64
 ```
+
+**Note**: Pre-commit hooks automatically run cargo fmt, cargo check, cargo clippy, and cargo test, so you typically only need to run `pre-commit run --all-files` before committing.
 
 ### CI Pipeline
 
@@ -224,20 +220,18 @@ Reference issues or specs as needed.
 1. **Understand the codebase first** - Read related code and tests
 2. **Follow the style guide** - Check `STYLE.md` and existing code patterns
 3. **Add/update tests** - Unit tests in `#[cfg(test)] mod test`
-4. **Run formatters**: `./scripts/cargo_ci.py fmt --all`
-5. **Fix all clippy warnings**: `./scripts/cargo_ci.py clippy --workspace -- -D warnings`
-6. **Run tests**: `./scripts/cargo_ci.py test --workspace --exclude lace-stubble --exclude fakeedid --exclude u-boot-sys`
-7. **If you modified lace-boot**: Run `./scripts/test-builds.sh` or build specific boards with `make -C lace-boot config all BOARD=<board>`
-8. **Commit with proper message format**
+4. **Run pre-commit checks before committing**: `pre-commit run --all-files` (runs formatting, linting, compilation checks, and unit tests)
+5. **If you modified lace-boot**: Run `./scripts/test-builds.sh` or build specific boards with `make -C lace-boot config all BOARD=<board>`
+6. **Commit with proper message format**
+
+**Note**: Pre-commit hooks are configured in `.pre-commit-config.yaml` and run automatically on `git commit` if installed. They include cargo fmt, cargo check, cargo clippy, cargo test, and file quality checks. Always run `pre-commit run --all-files` before using **report_progress** to ensure all checks pass.
 
 ### Before Submitting PR
 
 - [ ] Code follows STYLE.md
 - [ ] All files have proper license headers
-- [ ] `cargo fmt` passes (no formatting changes)
-- [ ] `cargo clippy` passes with `-D warnings` (no warnings)
 - [ ] Tests added for new functionality
-- [ ] Tests pass
+- [ ] Pre-commit hooks pass (`pre-commit run --all-files`)
 - [ ] Commit messages follow conventions
 
 ## Safety and Error Handling
