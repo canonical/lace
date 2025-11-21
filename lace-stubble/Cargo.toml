@@ -6,4 +6,5 @@ license = "GPL-2.0-only OR GPL-3.0-only"
 
 [dependencies]
 lace-util = { version = "0.1.0", path = "../lace-util" }
-uefi = { version = "0.36.0", features = ["panic_handler"] }
+uefi = { version = "0.36.0", features = ["global_allocator", "panic_handler"] }
+uefi-raw = "0.13.0"

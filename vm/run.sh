@@ -7,7 +7,9 @@ cargo build -p lace-stubble --target x86_64-unknown-uefi
 cargo run -p pewrap -- \
 	--stub target/x86_64-unknown-uefi/debug/lace-stubble.efi \
 	--output vm/stubble.efi \
-	--linux /vmlinuz
+	--linux /vmlinuz \
+	--initrd /initrd.img \
+	--cmdline "console=ttyS0"
 popd
 
 mcopy \
@@ -15,6 +17,7 @@ mcopy \
 	-i hdd.img@@1048576 \
 	stubble.efi \
 	::/EFI/BOOT/BOOTX64.EFI
+
 
 qemu-system-x86_64 \
 	-M q35,accel=kvm \
