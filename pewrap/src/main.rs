@@ -1,3 +1,6 @@
+// Allow manual_div_ceil for the align_up! macro usage
+#![allow(clippy::manual_div_ceil)]
+
 use std::{ffi::OsString, fmt::Display, io, mem::offset_of, process};
 
 use clap::Parser;
@@ -94,21 +97,15 @@ fn main() {
     }
 
     // Calculate section offsets
-    match bld.fixup_offsets() {
-        Err(e) => {
-            eprintln!("{}: {}", args.output.to_string_lossy(), e);
-            process::exit(1);
-        }
-        _ => (),
+    if let Err(e) = bld.fixup_offsets() {
+        eprintln!("{}: {}", args.output.to_string_lossy(), e);
+        process::exit(1);
     }
 
     // Write output file
-    match std::fs::File::create(&args.output).map(|x| bld.write_pe(x)) {
-        Err(e) => {
-            eprintln!("{}: {}", args.output.to_string_lossy(), e);
-            process::exit(1);
-        }
-        _ => (),
+    if let Err(e) = std::fs::File::create(&args.output).map(|x| bld.write_pe(x)) {
+        eprintln!("{}: {}", args.output.to_string_lossy(), e);
+        process::exit(1);
     }
 }
 

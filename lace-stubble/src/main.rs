@@ -48,26 +48,27 @@ fn main() -> Status {
         uefi::println!("{:#x?}", str::from_utf8(sect.name()).unwrap());
     }
 
+    #[allow(clippy::empty_loop)]
     loop {}
 }
 
 fn find_smbios_tables() -> Option<&'static [u8]> {
     unsafe {
-        if let Some(ptr) = find_config_table::<Smbios3EntryPoint>(ConfigTableEntry::SMBIOS3_GUID) {
-            if (*ptr).anchor_string.eq(b"_SM3_") {
-                return Some(core::slice::from_raw_parts(
-                    (*ptr).table_address as _,
-                    (*ptr).table_maximum_size as _,
-                ));
-            }
+        if let Some(ptr) = find_config_table::<Smbios3EntryPoint>(ConfigTableEntry::SMBIOS3_GUID)
+            && (*ptr).anchor_string.eq(b"_SM3_")
+        {
+            return Some(core::slice::from_raw_parts(
+                (*ptr).table_address as _,
+                (*ptr).table_maximum_size as _,
+            ));
         }
-        if let Some(ptr) = find_config_table::<SmbiosEntryPoint>(ConfigTableEntry::SMBIOS_GUID) {
-            if (*ptr).anchor_string.eq(b"_SM_") {
-                return Some(core::slice::from_raw_parts(
-                    (*ptr).table_address as _,
-                    (*ptr).table_length as _,
-                ));
-            }
+        if let Some(ptr) = find_config_table::<SmbiosEntryPoint>(ConfigTableEntry::SMBIOS_GUID)
+            && (*ptr).anchor_string.eq(b"_SM_")
+        {
+            return Some(core::slice::from_raw_parts(
+                (*ptr).table_address as _,
+                (*ptr).table_length as _,
+            ));
         }
     }
     None

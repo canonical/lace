@@ -143,7 +143,7 @@ impl SectionHeader {
         while end_i < self.name.len() && self.name[end_i] != 0 {
             end_i += 1;
         }
-        return &self.name[..end_i];
+        &self.name[..end_i]
     }
 }
 
@@ -159,12 +159,9 @@ pub struct PeRef<'a> {
 
 impl<'a> PeRef<'a> {
     pub fn find_section(&self, name: &str) -> Option<&'a SectionHeader> {
-        for sect in self.sect_hdrs {
-            if sect.name().eq(name.as_bytes()) {
-                return Some(sect);
-            }
-        }
-        None
+        self.sect_hdrs
+            .iter()
+            .find(|&sect| sect.name().eq(name.as_bytes()))
     }
 }
 

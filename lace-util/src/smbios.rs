@@ -116,7 +116,7 @@ impl<'s, T: FromBytes + KnownLayout + Immutable> SmbiosTable<'s, T> {
             // String index is 1 based
             return None;
         }
-        self.strings.split(|b| *b == 0).skip(i - 1).next()
+        self.strings.split(|b| *b == 0).nth(i - 1)
     }
 }
 

@@ -14,12 +14,7 @@ pub fn find_byte_sequence(s: &[u8], sub: &[u8]) -> Option<usize> {
     if s.len() < sub.len() {
         return None;
     }
-    for i in 0..s.len() - sub.len() + 1 {
-        if &s[i..i + sub.len()] == sub {
-            return Some(i);
-        }
-    }
-    None
+    (0..s.len() - sub.len() + 1).find(|&i| &s[i..i + sub.len()] == sub)
 }
 
 pub fn hexdump<W: Write>(mut w: W, s: &[u8]) -> fmt::Result {

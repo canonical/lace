@@ -22,6 +22,12 @@ pub struct Sha1Ctx {
     total_size: usize,
 }
 
+impl Default for Sha1Ctx {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Sha1Ctx {
     pub fn new() -> Self {
         Self {
@@ -43,7 +49,7 @@ impl Sha1Ctx {
             self.total_size += SHA1_BLOCK_SIZE;
         }
 
-        if data.len() > 0 {
+        if !data.is_empty() {
             self.buffer[self.buffer_size..self.buffer_size + data.len()].copy_from_slice(data);
             self.buffer_size += data.len();
         }
