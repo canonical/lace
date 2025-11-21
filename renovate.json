@@ -2,5 +2,12 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "ignorePaths": [
+    "**/ulib/**"
+  ],
+  "includePaths": [
+    "ulib/examples/rust/Cargo.toml",
+    "ulib/lib/rust/Cargo.toml"
   ]
 }
