@@ -4,6 +4,9 @@
 
 #![cfg_attr(not(test), no_std)]
 
+extern crate alloc;
+
+pub mod edid;
 pub mod peimage;
 pub mod sha1;
 pub mod smbios;
