@@ -16,9 +16,10 @@
 /workspace.code-workspace
 /.cache
 
-# github files (but allow workflows)
+# github files (but allow workflows and dependabot config)
 /.github/*
 !/.github/workflows
+!/.github/dependabot.yml
 
 # images and EFI files
 /*.fd

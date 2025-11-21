@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only
+version: 2
+updates:
+  # Monitor root Cargo workspace
+  # Note: DependaBot will scan the workspace from root, which includes all workspace members.
+  # We use specific directory entries below for ulib/ Cargo.toml files to ensure they're monitored.
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+  # Explicitly monitor Cargo.toml in ulib/examples/rust/
+  # This ensures updates are tracked even though parent ulib/ might have other files we want to ignore
+  - package-ecosystem: "cargo"
+    directory: "/ulib/examples/rust"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+  # Explicitly monitor Cargo.toml in ulib/lib/rust/
+  - package-ecosystem: "cargo"
+    directory: "/ulib/lib/rust"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
