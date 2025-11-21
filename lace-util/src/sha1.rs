@@ -4,8 +4,10 @@
 
 const SHA1_STATE_CNT: usize = 5;
 const SHA1_BLOCK_SIZE: usize = 64;
-const SHA1_DIGEST_SIZE: usize = 20;
 const SHA1_ITERS: usize = 80;
+
+/// Size of SHA1 digest in bytes
+pub const SHA1_DIGEST_SIZE: usize = 20;
 
 /// One shot SHA1 hash computation, for non-security purposes only.
 pub fn sha1(data: &[u8]) -> [u8; SHA1_DIGEST_SIZE] {
