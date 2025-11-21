@@ -2,7 +2,7 @@
 // Copyright (C) 2025, Canonical Ltd.
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 
 pub mod peimage;
 pub mod sha1;

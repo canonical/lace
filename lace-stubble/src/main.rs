@@ -5,7 +5,6 @@
 
 #![no_main]
 #![no_std]
-#![cfg(not(test))]
 
 use lace_util::peimage;
 use lace_util::smbios::*;
