@@ -3,10 +3,10 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 
 use core::marker::PhantomData;
-use zerocopy::{FromBytes, Immutable, KnownLayout};
+use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, FromBytes, IntoBytes, Immutable, KnownLayout)]
 pub struct SmbiosEntryPoint {
     pub anchor_string: [u8; 4],
     pub entry_point_structure_checksum: u8,
@@ -25,7 +25,7 @@ pub struct SmbiosEntryPoint {
 }
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, FromBytes, IntoBytes, Immutable, KnownLayout)]
 pub struct Smbios3EntryPoint {
     pub anchor_string: [u8; 5],
     pub entry_point_structure_checksum: u8,
@@ -40,7 +40,7 @@ pub struct Smbios3EntryPoint {
 }
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, FromBytes, Immutable, KnownLayout)]
+#[derive(Clone, Copy, Debug, FromBytes, IntoBytes, Immutable, KnownLayout)]
 pub struct SmbiosHeader {
     pub type_: u8,
     pub length: u8,
@@ -48,7 +48,7 @@ pub struct SmbiosHeader {
 }
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, FromBytes, Immutable, KnownLayout)]
+#[derive(Clone, Copy, Debug, FromBytes, IntoBytes, Immutable, KnownLayout)]
 pub struct SmbiosTableType0 {
     pub header: SmbiosHeader,
     pub vendor: u8,
@@ -61,30 +61,21 @@ pub struct SmbiosTableType0 {
 }
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, FromBytes, Immutable, KnownLayout)]
+#[derive(Clone, Copy, Debug, FromBytes, IntoBytes, Immutable, KnownLayout)]
 pub struct SmbiosTableType1 {
     pub header: SmbiosHeader,
     pub manufacturer: u8,
     pub product_name: u8,
     pub version: u8,
     pub serial_number: u8,
-    pub uuid: EFI_GUID,
+    pub uuid: crate::Guid,
     pub wake_up_type: u8,
     pub sku_number: u8,
     pub family: u8,
 }
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, FromBytes, Immutable, KnownLayout)]
-pub struct EFI_GUID {
-    pub data1: u32,
-    pub data2: u16,
-    pub data3: u16,
-    pub data4: [u8; 8],
-}
-
-#[repr(C, packed)]
-#[derive(Clone, Copy, Debug, FromBytes, Immutable, KnownLayout)]
+#[derive(Clone, Copy, Debug, FromBytes, IntoBytes, Immutable, KnownLayout)]
 pub struct SmbiosTableType2 {
     pub header: SmbiosHeader,
     pub manufacturer: u8,
