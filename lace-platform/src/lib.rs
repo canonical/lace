@@ -4,6 +4,7 @@
 
 use core::alloc::GlobalAlloc;
 
+#[allow(dead_code)]
 trait Platform: GlobalAlloc {
     type Error;
     type PhysicalAddress;
@@ -21,6 +22,7 @@ trait Platform: GlobalAlloc {
     fn boot_linux(cfg: BootLinuxConfig) -> Result<(), Self::Error>;
 }
 
+#[allow(dead_code)]
 struct BootLinuxConfig<'kernel, 'initrd, 'dtb, 'cmdline> {
     kernel: &'kernel [u8],
     initrd: Option<&'initrd [u8]>,
