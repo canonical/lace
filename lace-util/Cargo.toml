@@ -2,6 +2,7 @@
 name = "lace-util"
 version = "0.1.0"
 edition = "2024"
+license = "GPL-2.0-only OR GPL-3.0-only"
 
 [dependencies]
 zerocopy = { version = "0.8.27", features = ["derive"] }
