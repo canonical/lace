@@ -48,23 +48,23 @@ fn main() {
         }
     };
 
-/*
-    println!("{:#x?}", pe.dos_hdr);
-    println!("{:#x?}", pe.nt_hdrs);
+    /*
+        println!("{:#x?}", pe.dos_hdr);
+        println!("{:#x?}", pe.nt_hdrs);
 
-    println!("PE Sections");
-    for sect in pe.sect_hdrs.iter() {
-        println!(
-            "  {:8} Raw data {:08x} raw size {:08x} VA {:08x} Virt size {:08x} Characteristics {:8x}",
-            str::from_utf8(sect.name()).unwrap(),
-            sect.pointer_to_raw_data,
-            sect.size_of_raw_data,
-            sect.virtual_address,
-            sect.virtual_size,
-            sect.characteristics
-        );
-    }
-*/
+        println!("PE Sections");
+        for sect in pe.sect_hdrs.iter() {
+            println!(
+                "  {:8} Raw data {:08x} raw size {:08x} VA {:08x} Virt size {:08x} Characteristics {:8x}",
+                str::from_utf8(sect.name()).unwrap(),
+                sect.pointer_to_raw_data,
+                sect.size_of_raw_data,
+                sect.virtual_address,
+                sect.virtual_size,
+                sect.characteristics
+            );
+        }
+    */
 
     let mut bld = PeRebuilder::from_ref(&pe);
 
@@ -86,7 +86,11 @@ fn main() {
         let Some(data) = data else {
             continue;
         };
-        bld.add_section(name, data.into_encoded_bytes(), SCN_CNT_INITIALIZED_DATA | SCN_MEM_READ);
+        bld.add_section(
+            name,
+            data.into_encoded_bytes(),
+            SCN_CNT_INITIALIZED_DATA | SCN_MEM_READ,
+        );
     }
 
     // Calculate section offsets
