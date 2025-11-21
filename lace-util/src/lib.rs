@@ -5,6 +5,7 @@
 #![no_std]
 
 pub mod peimage;
+pub mod sha1;
 pub mod smbios;
 
 use core::fmt::{self, Write};
