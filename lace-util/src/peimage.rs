@@ -157,18 +157,27 @@ pub struct PeRef<'a> {
     pub sect_hdrs: &'a [SectionHeader],
 }
 
-impl<'a> PeRef<'a> {
-    pub fn find_section(&self, name: &str) -> Option<&'a SectionHeader> {
-        self.sect_hdrs
-            .iter()
-            .find(|&sect| sect.name().eq(name.as_bytes()))
-    }
-}
-
 #[derive(Clone, Copy, Debug)]
 pub enum PeParseError {
     Truncated,
     BadHeader,
+}
+
+impl<'a> PeRef<'a> {
+    pub fn find_section_header(&self, name: &str) -> Option<&'a SectionHeader> {
+        self.sect_hdrs
+            .iter()
+            .find(|&sect| sect.name().eq(name.as_bytes()))
+    }
+
+    pub fn virtual_section_data(&self, shdr: &SectionHeader) -> Result<&'a [u8], PeParseError> {
+        let start = shdr.virtual_address as usize;
+        let end = start + shdr.virtual_size as usize;
+        match self.data.get(start..end) {
+            Some(data) => Ok(data),
+            None => Err(PeParseError::Truncated),
+        }
+    }
 }
 
 impl Display for PeParseError {
