@@ -3,24 +3,9 @@ version: 2
 updates:
   # Monitor root Cargo workspace
   # This will monitor the workspace members defined in the root Cargo.toml.
-  # Note: The workspace explicitly excludes ulib/examples/rust, so we need separate entries below.
+  # Note: ulib/ is not monitored as it contains no external dependencies.
   - package-ecosystem: "cargo"
     directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-
-  # Explicitly monitor Cargo.toml in ulib/examples/rust/
-  # This ensures updates are tracked even though parent ulib/ might have other files we want to ignore
-  - package-ecosystem: "cargo"
-    directory: "/ulib/examples/rust"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-
-  # Explicitly monitor Cargo.toml in ulib/lib/rust/
-  - package-ecosystem: "cargo"
-    directory: "/ulib/lib/rust"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
