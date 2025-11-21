@@ -2,8 +2,8 @@
 version: 2
 updates:
   # Monitor root Cargo workspace
-  # Note: DependaBot will scan the workspace from root, which includes all workspace members.
-  # We use specific directory entries below for ulib/ Cargo.toml files to ensure they're monitored.
+  # This will monitor the workspace members defined in the root Cargo.toml.
+  # Note: The workspace explicitly excludes ulib/examples/rust, so we need separate entries below.
   - package-ecosystem: "cargo"
     directory: "/"
     schedule:

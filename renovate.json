@@ -4,10 +4,8 @@
     "config:recommended"
   ],
   "ignorePaths": [
-    "**/ulib/**"
-  ],
-  "includePaths": [
-    "ulib/examples/rust/Cargo.toml",
-    "ulib/lib/rust/Cargo.toml"
+    "**/ulib/**",
+    "!ulib/examples/rust/Cargo.toml",
+    "!ulib/lib/rust/Cargo.toml"
   ]
 }
