@@ -16,8 +16,9 @@
 /workspace.code-workspace
 /.cache
 
-# github files
-/.github
+# github files (but allow workflows)
+/.github/*
+!/.github/workflows
 
 # images and EFI files
 /*.fd
