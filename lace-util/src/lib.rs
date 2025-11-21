@@ -6,6 +6,7 @@
 
 extern crate alloc;
 
+pub mod chid;
 pub mod edid;
 pub mod peimage;
 pub mod sha1;
