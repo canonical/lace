@@ -57,7 +57,28 @@ pub struct SmbiosTableType0 {
     pub bios_release_date: u8,
     pub bios_size: u8,
     pub bios_characteristics: u64,
+    // Versions 2.1 to 2.3 might have 1 or 2 extension bytes
+    // here, but we don't care about those.
+}
+
+#[repr(C, packed)]
+#[derive(Clone, Copy, Debug, FromBytes, IntoBytes, Immutable, KnownLayout)]
+pub struct SmbiosTableType0_24 {
+    pub header: SmbiosHeader,
+    pub vendor: u8,
+    pub bios_version: u8,
+    pub bios_segment: u16,
+    pub bios_release_date: u8,
+    pub bios_size: u8,
+    pub bios_characteristics: u64,
+    // Version 2.4 is defined to have exactly 2 extension bytes
+    // and the exact list of fields below.
     pub bios_characteristics_ext: [u8; 2],
+    pub bios_major_release: u8,
+    pub bios_minor_release: u8,
+    pub ec_fw_major_release: u8,
+    pub ec_fw_minor_release: u8,
+    pub ext_bios_rom_size: u16,
 }
 
 #[repr(C, packed)]
