@@ -37,7 +37,7 @@ pub fn hexdump<W: Write>(mut w: W, s: &[u8]) -> fmt::Result {
 #[macro_export]
 macro_rules! align_up {
     ($val:expr, $bound:expr $(,)?) => {
-        ($val + $bound - 1) / $bound * $bound
+        $val.div_ceil($bound) * $bound
     };
 }
 
@@ -51,7 +51,7 @@ macro_rules! align_down {
 #[macro_export]
 macro_rules! count_blocks_aligned_up {
     ($val:expr, $block_size:expr $(,)?) => {
-        ($val + $block_size - 1) / $block_size
+        $val.div_ceil($block_size)
     };
 }
 

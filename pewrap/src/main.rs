@@ -1,6 +1,3 @@
-// Allow manual_div_ceil for the align_up! macro usage
-#![allow(clippy::manual_div_ceil)]
-
 use std::{ffi::OsString, fmt::Display, io, mem::offset_of, process};
 
 use clap::Parser;
