@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0+
 [workspace]
 resolver = "2"
-members = [ "lace-platform", "lace-stubble", "lace-util", "tools/pewrap"]
+members = [ "lace-platform", "lace-stubble", "lace-util", "tools/collect-hwids", "tools/pewrap"]
 
 
 [profile.dev]

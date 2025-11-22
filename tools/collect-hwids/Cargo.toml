@@ -1,0 +1,12 @@
+[package]
+name = "collect-hwids"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-only OR GPL-3.0-only"
+
+[dependencies]
+clap = { version = "4.5.53", features = ["derive"] }
+lace-util = { version = "0.1.0", path = "../../lace-util" }
+regex = "1.12.2"
+zerocopy = "0.8.28"
+zip = { version = "6.0.0", default-features = false, features = ["deflate"] }
