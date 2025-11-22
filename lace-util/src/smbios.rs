@@ -105,6 +105,17 @@ pub struct SmbiosTableType2 {
     pub serial_number: u8,
 }
 
+#[repr(C, packed)]
+#[derive(Clone, Copy, Debug, FromBytes, IntoBytes, Immutable, KnownLayout)]
+pub struct SmbiosTableType3 {
+    pub header: SmbiosHeader,
+    pub manufacturer: u8,
+    pub type_: u8,
+    pub version: u8,
+    pub serial_number: u8,
+    pub asset_tag_number: u8,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SmbiosError {
     TableNotFound,
