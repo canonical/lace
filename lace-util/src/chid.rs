@@ -2,6 +2,30 @@
 // Copyright (C) 2025, Canonical Ltd.
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 
+//! Computer Hardware ID (CHID) computation.
+//!
+//! CHIDs are GUIDs derived from system information (SMBIOS data, EDID panel
+//! info, etc.) that uniquely identify a hardware configuration. They have two
+//! primary uses:
+//!
+//! 1. **Firmware updates**: fwupd and the Linux Vendor Firmware Service (LVFS)
+//!    use CHIDs to match firmware updates to specific devices.
+//!
+//! 2. **Device tree selection**: On machines that boot Linux with device tree,
+//!    CHIDs are used to select the correct compatible string, which in turn
+//!    determines which device tree to use from a list of available options.
+//!
+//! The algorithm follows Microsoft's CHID specification and RFC 9562 for UUID
+//! generation:
+//! 1. Concatenate selected hardware identifiers (separated by '&' in UCS-2
+//!    encoding)
+//! 2. Hash with SHA-1 using a defined namespace GUID
+//! 3. Format the result as a version 5 (SHA-1 based) UUID per RFC 9562
+//!
+//! Different "CHID types" use different combinations of hardware sources,
+//! allowing matching at varying levels of specificity (from exact BIOS version
+//! down to just the manufacturer).
+
 use crate::edid::*;
 use crate::sha1::*;
 use crate::smbios::*;
@@ -12,28 +36,49 @@ use alloc::vec::Vec;
 use core::mem::size_of;
 use zerocopy::{FromBytes, IntoBytes};
 
-/// CHID namespace GUID
+/// CHID namespace GUID used as the seed for SHA-1 hashing per RFC 9562
 pub const CHID_NAMESPACE_GUID: crate::Guid =
     crate::guid_str("70ffd812-4c7f-4c7d-0000-000000000000");
 
-/// Possible sources of information for a CHID type
+/// Indices into the ChidSources array for each possible hardware information
+/// source. These correspond to SMBIOS table fields and EDID data used to
+/// compute CHIDs.
+///
+/// From SMBIOS Type 1 (System Information):
 pub const CHID_SMBIOS_MANUFACTURER: usize = 0;
 pub const CHID_SMBIOS_FAMILY: usize = 1;
 pub const CHID_SMBIOS_PRODUCT_NAME: usize = 2;
 pub const CHID_SMBIOS_PRODUCT_SKU: usize = 3;
+/// From SMBIOS Type 2 (Baseboard Information):
 pub const CHID_SMBIOS_BASEBOARD_MANUFACTURER: usize = 4;
 pub const CHID_SMBIOS_BASEBOARD_PRODUCT: usize = 5;
+/// From SMBIOS Type 0 (BIOS Information):
 pub const CHID_SMBIOS_BIOS_VENDOR: usize = 6;
 pub const CHID_SMBIOS_BIOS_VERSION: usize = 7;
 pub const CHID_SMBIOS_BIOS_MAJOR: usize = 8;
 pub const CHID_SMBIOS_BIOS_MINOR: usize = 9;
+/// From SMBIOS Type 3 (System Enclosure):
 pub const CHID_SMBIOS_ENCLOSURE_TYPE: usize = 10;
+/// From EDID (display panel identifier):
 pub const CHID_EDID_PANEL: usize = 11;
+/// Total number of possible CHID sources
 pub const CHID_SOURCE_MAX: usize = 12;
 
-/// CHID types and the exact sources of information they are generated from
+/// CHID types and the sources of information they are generated from.
+///
+/// Each entry is a bitmask indicating which hardware sources are combined to
+/// produce that CHID type. Types 0-14 are standard Microsoft CHID types,
+/// ordered from most specific (type 0: exact BIOS version match) to least
+/// specific (type 14: manufacturer only). Types 15-17 are non-standard
+/// extensions that include EDID panel information for display-specific
+/// firmware matching.
+///
+/// Firmware vendors typically publish updates targeting multiple CHID types,
+/// allowing updates to match devices at the appropriate specificity level.
 pub const CHID_TYPES: [usize; 18] = [
-    // 0
+    // Type 0: Most specific - includes full BIOS version info
+    // Manufacturer + Family + ProductName + SKU + BiosVendor + BiosVersion +
+    // BiosMajor + BiosMinor
     1 << CHID_SMBIOS_MANUFACTURER
         | 1 << CHID_SMBIOS_FAMILY
         | 1 << CHID_SMBIOS_PRODUCT_NAME
@@ -42,7 +87,7 @@ pub const CHID_TYPES: [usize; 18] = [
         | 1 << CHID_SMBIOS_BIOS_VERSION
         | 1 << CHID_SMBIOS_BIOS_MAJOR
         | 1 << CHID_SMBIOS_BIOS_MINOR,
-    // 1
+    // Type 1: Like type 0 but without SKU
     1 << CHID_SMBIOS_MANUFACTURER
         | 1 << CHID_SMBIOS_FAMILY
         | 1 << CHID_SMBIOS_PRODUCT_NAME
@@ -50,67 +95,70 @@ pub const CHID_TYPES: [usize; 18] = [
         | 1 << CHID_SMBIOS_BIOS_VERSION
         | 1 << CHID_SMBIOS_BIOS_MAJOR
         | 1 << CHID_SMBIOS_BIOS_MINOR,
-    // 2
+    // Type 2: Like type 1 but without Family
     (1 << CHID_SMBIOS_MANUFACTURER)
         | (1 << CHID_SMBIOS_PRODUCT_NAME)
         | (1 << CHID_SMBIOS_BIOS_VENDOR)
         | (1 << CHID_SMBIOS_BIOS_VERSION)
         | (1 << CHID_SMBIOS_BIOS_MAJOR)
         | (1 << CHID_SMBIOS_BIOS_MINOR),
-    // 3
+    // Type 3: System + baseboard info (no BIOS version)
     (1 << CHID_SMBIOS_MANUFACTURER)
         | (1 << CHID_SMBIOS_FAMILY)
         | (1 << CHID_SMBIOS_PRODUCT_NAME)
         | (1 << CHID_SMBIOS_PRODUCT_SKU)
         | (1 << CHID_SMBIOS_BASEBOARD_MANUFACTURER)
         | (1 << CHID_SMBIOS_BASEBOARD_PRODUCT),
-    // 4
+    // Type 4: System info only (Manufacturer + Family + ProductName + SKU)
     (1 << CHID_SMBIOS_MANUFACTURER)
         | (1 << CHID_SMBIOS_FAMILY)
         | (1 << CHID_SMBIOS_PRODUCT_NAME)
         | (1 << CHID_SMBIOS_PRODUCT_SKU),
-    // 5
+    // Type 5: Manufacturer + Family + ProductName
     (1 << CHID_SMBIOS_MANUFACTURER) | (1 << CHID_SMBIOS_FAMILY) | (1 << CHID_SMBIOS_PRODUCT_NAME),
-    // 6
+    // Type 6: Manufacturer + SKU + baseboard info
     (1 << CHID_SMBIOS_MANUFACTURER)
         | (1 << CHID_SMBIOS_PRODUCT_SKU)
         | (1 << CHID_SMBIOS_BASEBOARD_MANUFACTURER)
         | (1 << CHID_SMBIOS_BASEBOARD_PRODUCT),
-    // 7
+    // Type 7: Manufacturer + SKU only
     (1 << CHID_SMBIOS_MANUFACTURER) | (1 << CHID_SMBIOS_PRODUCT_SKU),
-    // 8
+    // Type 8: Manufacturer + ProductName + baseboard info
     (1 << CHID_SMBIOS_MANUFACTURER)
         | (1 << CHID_SMBIOS_PRODUCT_NAME)
         | (1 << CHID_SMBIOS_BASEBOARD_MANUFACTURER)
         | (1 << CHID_SMBIOS_BASEBOARD_PRODUCT),
-    // 9
+    // Type 9: Manufacturer + ProductName only
     (1 << CHID_SMBIOS_MANUFACTURER) | (1 << CHID_SMBIOS_PRODUCT_NAME),
-    // 10
+    // Type 10: Manufacturer + Family + baseboard info
     (1 << CHID_SMBIOS_MANUFACTURER)
         | (1 << CHID_SMBIOS_FAMILY)
         | (1 << CHID_SMBIOS_BASEBOARD_MANUFACTURER)
         | (1 << CHID_SMBIOS_BASEBOARD_PRODUCT),
-    // 11
+    // Type 11: Manufacturer + Family only
     (1 << CHID_SMBIOS_MANUFACTURER) | (1 << CHID_SMBIOS_FAMILY),
-    // 12
+    // Type 12: Manufacturer + enclosure type (e.g., laptop vs desktop)
     (1 << CHID_SMBIOS_MANUFACTURER) | (1 << CHID_SMBIOS_ENCLOSURE_TYPE),
-    // 13
+    // Type 13: Manufacturer + baseboard info only
     (1 << CHID_SMBIOS_MANUFACTURER)
         | (1 << CHID_SMBIOS_BASEBOARD_MANUFACTURER)
         | (1 << CHID_SMBIOS_BASEBOARD_PRODUCT),
-    // 14
+    // Type 14: Manufacturer only - least specific standard type
     (1 << CHID_SMBIOS_MANUFACTURER),
-    // 15 (non-standard)
+    // Type 15 (non-standard): System info + EDID panel for display-specific fw
     (1 << CHID_SMBIOS_MANUFACTURER)
         | (1 << CHID_SMBIOS_FAMILY)
         | (1 << CHID_SMBIOS_PRODUCT_NAME)
         | (1 << CHID_EDID_PANEL),
-    // 16 (non-standard)
+    // Type 16 (non-standard): Manufacturer + Family + EDID panel
     (1 << CHID_SMBIOS_MANUFACTURER) | (1 << CHID_SMBIOS_FAMILY) | (1 << CHID_EDID_PANEL),
-    // 17 (non-standard)
+    // Type 17 (non-standard): Manufacturer + SKU + EDID panel
     (1 << CHID_SMBIOS_MANUFACTURER) | (1 << CHID_SMBIOS_PRODUCT_SKU) | (1 << CHID_EDID_PANEL),
 ];
 
+/// Array of hardware source strings used to compute CHIDs. Each index
+/// corresponds to a CHID_SMBIOS_* or CHID_EDID_* constant. `None` indicates
+/// the source is not available on this system.
 pub type ChidSources = [Option<String>; CHID_SOURCE_MAX];
 
 #[derive(Clone, Copy, Debug)]
@@ -224,50 +272,77 @@ pub fn chid_sources_from_smbios_and_edid(
     Ok(chid_sources)
 }
 
+/// Computes a CHID GUID from hardware source strings and a CHID type bitmask.
+/// The `chid_type` selects which sources to include (use values from
+/// [`CHID_TYPES`]). Returns `None` if any required source is missing.
+///
+/// The computation hashes the namespace GUID followed by the selected sources
+/// (as UCS-2 strings separated by '&'), then formats the first 16 bytes of the
+/// SHA-1 digest as a version 5 UUID per RFC 9562.
+///
+/// # Examples
+///
+/// ```
+/// use lace_util::chid::*;
+///
+/// // Type 14 only requires manufacturer
+/// let mut srcs: ChidSources = Default::default();
+/// srcs[CHID_SMBIOS_MANUFACTURER] = Some("LENOVO".into());
+///
+/// let chid = compute_chid(&srcs, CHID_TYPES[14]).unwrap();
+/// assert_eq!(chid, lace_util::guid_str("6de5d951-d755-576b-bd09-c5cf66b27234"));
+/// ```
 pub fn compute_chid(srcs: &ChidSources, chid_type: usize) -> Option<crate::Guid> {
     let mut ctx = Sha1Ctx::new();
 
-    // Hash CHID namespace GUID in big-endian format
+    // Hash CHID namespace GUID in big-endian format (RFC 9562 requires big-
+    // endian for the multi-byte fields when hashing)
     let mut ns_be = CHID_NAMESPACE_GUID;
     ns_be.data1 = ns_be.data1.to_be();
     ns_be.data2 = ns_be.data2.to_be();
     ns_be.data3 = ns_be.data3.to_be();
     ctx.update(ns_be.as_bytes());
 
-    // Hash all selected sources
+    // Hash all selected sources as UCS-2 (UTF-16) strings, separated by '&'
     let mut first = true;
     for (i, src) in srcs.iter().enumerate() {
         if (chid_type & (1 << i)) != 0 {
             if !first {
-                // Separator
+                // UCS-2 encoded '&' separator between fields
                 ctx.update(&[b'&', 0]);
             } else {
                 first = false;
             }
             if let Some(src) = src {
+                // Convert source string to UCS-2 (UTF-16) for hashing
                 let ucs2: Vec<u16> = src.encode_utf16().collect();
                 ctx.update(ucs2.as_bytes());
             } else {
-                // Missing source means this chid is missing
                 return None;
             }
         }
     }
 
-    // First 16-bytes of the digests are the CHID in big-endian format
+    // Extract the GUID from first 16 bytes of SHA-1 digest (big-endian format)
     let digest = ctx.digest();
     let (mut chid, _) = unsafe {
         // SAFETY: SHA1 digest is 20 bytes, GUID is 16 bytes
         debug_assert!(SHA1_DIGEST_SIZE >= size_of::<crate::Guid>());
         crate::Guid::read_from_prefix(&digest).unwrap_unchecked()
     };
-    // Convert to native-endian format
+
+    // Convert from big-endian (hash output) to native-endian for GUID
     chid.data1 = u32::from_be(chid.data1);
     chid.data2 = u16::from_be(chid.data2);
     chid.data3 = u16::from_be(chid.data3);
-    // Fix-up fields to conform to RFC 4122
-    chid.data3 = (chid.data3 & 0x0FFF) | (5 << 12);
-    chid.data4[0] = (chid.data4[0] & 0x3F) | 0x80;
+
+    // Apply RFC 9562 version 5 (SHA-1 name-based) UUID formatting:
+    // - Set version field (bits 12-15 of data3) to 5
+    // - Set variant field (the two most significant bits (7-6) of data4[0]) to
+    // binary 0b10 (i.e., pattern 10xxxxxx) per RFC 9562
+    chid.data3 = (chid.data3 & 0x0fff) | (5 << 12);
+    chid.data4[0] = (chid.data4[0] & 0x3f) | 0x80;
+
     Some(chid)
 }
 
