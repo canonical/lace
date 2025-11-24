@@ -1,6 +1,13 @@
 #!/bin/bash -e
 
-cd $(dirname $0)
+VM_DIR="$(dirname $0)/../vm"
+
+if [ ! -e "$VM_DIR" ]; then
+	echo "error: Please run vm-init.sh first" >&2
+	exit 1
+fi
+
+cd "$VM_DIR"
 
 pushd ..
 cargo build -p lace-stubble --target x86_64-unknown-uefi
