@@ -162,7 +162,7 @@ mod test {
 
     fn assert_eq_all_chids(srcs: &ChidSources, expected_chids: &[Option<crate::Guid>]) {
         for (i, &chid_type) in CHID_TYPES.iter().enumerate() {
-            if let Some(chid) = compute_chid(&srcs, chid_type) {
+            if let Some(chid) = compute_chid(srcs, chid_type) {
                 println!("CHID type {}: {}", i, chid);
             } else {
                 println!("CHID type {}: <missing>", i);
