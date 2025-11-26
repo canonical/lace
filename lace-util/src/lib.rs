@@ -41,16 +41,18 @@ pub fn hexdump<W: Write>(mut w: W, s: &[u8]) -> fmt::Result {
 
 #[macro_export]
 macro_rules! align_up {
-    ($val:expr, $bound:expr $(,)?) => {
-        $val.div_ceil($bound) * $bound
-    };
+    ($val:expr, $bound:expr $(,)?) => {{
+        let _bound = $bound;
+        $val.div_ceil(_bound) * _bound
+    }};
 }
 
 #[macro_export]
 macro_rules! align_down {
-    ($val:expr, $bound:expr $(,)?) => {
-        $val / $bound * $bound
-    };
+    ($val:expr, $bound:expr $(,)?) => {{
+        let _bound = $bound;
+        $val / _bound * _bound
+    }};
 }
 
 #[macro_export]
