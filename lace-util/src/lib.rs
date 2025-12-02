@@ -70,7 +70,9 @@ macro_rules! count_blocks_aligned_down {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, FromBytes, IntoBytes, Immutable, KnownLayout)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, FromBytes, IntoBytes, Immutable, KnownLayout,
+)]
 pub struct Guid {
     pub data1: u32,
     pub data2: u16,
