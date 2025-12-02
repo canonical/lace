@@ -12,7 +12,7 @@ pub mod peimage;
 pub mod sha1;
 pub mod smbios;
 
-use core::fmt::{self, Display, Write};
+use core::fmt::{self, Debug, Display, Write};
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 pub fn find_byte_sequence(s: &[u8], sub: &[u8]) -> Option<usize> {
@@ -71,13 +71,34 @@ macro_rules! count_blocks_aligned_down {
 
 #[repr(C)]
 #[derive(
-    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, FromBytes, IntoBytes, Immutable, KnownLayout,
+    Clone, Copy, Default, PartialEq, Eq, Hash, FromBytes, IntoBytes, Immutable, KnownLayout,
 )]
 pub struct Guid {
     pub data1: u32,
     pub data2: u16,
     pub data3: u16,
     pub data4: [u8; 8],
+}
+
+impl Debug for Guid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "guid_str(\"{:08x}-{:04x}-{:04x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}\")",
+            self.data1,
+            self.data2,
+            self.data3,
+            self.data4[0],
+            self.data4[1],
+            self.data4[2],
+            self.data4[3],
+            self.data4[4],
+            self.data4[5],
+            self.data4[6],
+            self.data4[7]
+        )?;
+        Ok(())
+    }
 }
 
 impl Display for Guid {
