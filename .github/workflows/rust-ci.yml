@@ -19,55 +19,55 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      
+
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-      
+
       - name: Run cargo check
-        run: cargo check --workspace --exclude lace-boot
+        run: ./scripts/cargo_ci.py check --workspace --exclude lace-boot
 
   fmt:
     name: Format Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      
+
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
           components: rustfmt
-      
+
       - name: Check formatting
-        run: cargo fmt --all -- --check
+        run: ./scripts/cargo_ci.py fmt --all -- --check
 
   clippy:
     name: Clippy Lints
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      
+
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
           components: clippy
-      
+
       - name: Run clippy
-        run: cargo clippy --workspace -- -D warnings
+        run: ./scripts/cargo_ci.py clippy --workspace -- -D warnings
 
   test:
     name: Unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      
+
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-      
+
       - name: Run unit tests
-        run: cargo test --workspace --exclude lace-stubble --exclude u-boot-sys
+        run: ./scripts/cargo_ci.py test --workspace --exclude lace-stubble --exclude u-boot-sys
