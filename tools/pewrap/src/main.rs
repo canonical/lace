@@ -1,8 +1,21 @@
-use std::{ffi::OsString, fmt::Display, io, mem::offset_of, process};
+// SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only
+// Copyright (C) 2025, Canonical Ltd.
+// Authors: Mate Kukri <mate.kukri@canonical.com>
 
 use clap::Parser;
+use lace_util::chid_mapping::*;
 use lace_util::peimage::*;
 use lace_util::*;
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::VecDeque,
+    fmt::Display,
+    fs::DirEntry,
+    io,
+    mem::offset_of,
+    path::{Path, PathBuf},
+    process,
+};
 use zerocopy::IntoBytes;
 
 #[derive(Parser, Debug)]
@@ -10,23 +23,35 @@ use zerocopy::IntoBytes;
 struct Args {
     /// Path to input stub PE image
     #[arg(short, long)]
-    stub: OsString,
+    stub: PathBuf,
 
     /// Path to output PE image
     #[arg(short, long)]
-    output: OsString,
+    output: PathBuf,
 
     /// Path to linux kernel image to add
     #[arg(short, long)]
-    linux: Option<OsString>,
+    linux: Option<PathBuf>,
 
     /// Path to initrd image to add
     #[arg(short, long)]
-    initrd: Option<OsString>,
+    initrd: Option<PathBuf>,
 
     /// Kernel command line to add
     #[arg(short, long)]
-    cmdline: Option<OsString>,
+    cmdline: Option<String>,
+
+    /// Add .sbat section with SBAT data from the given file
+    #[arg(long)]
+    sbat: Option<PathBuf>,
+
+    /// HWIDs directory to scan for JSON files
+    #[arg(long)]
+    hwids: Option<PathBuf>,
+
+    /// Device tree blobs to add for automatic loading
+    #[arg(long)]
+    dtbauto: Vec<PathBuf>,
 }
 
 fn main() {
@@ -36,14 +61,14 @@ fn main() {
     let data = match std::fs::read(&args.stub) {
         Ok(x) => x,
         Err(e) => {
-            eprintln!("{}: {}", args.stub.to_string_lossy(), e);
+            eprintln!("{}: {}", args.stub.display(), e);
             process::exit(1);
         }
     };
     let pe = match parse_pe(&data) {
         Ok(x) => x,
         Err(e) => {
-            eprintln!("{}: {}", args.stub.to_string_lossy(), e);
+            eprintln!("{}: {}", args.stub.display(), e);
             process::exit(1);
         }
     };
@@ -68,41 +93,193 @@ fn main() {
 
     let mut bld = PeRebuilder::from_ref(&pe);
 
-    // Add sections
-    for (name, path) in [(".linux", args.linux), (".initrd", args.initrd)] {
+    // Add sections from files
+    let mut file_sections = vec![
+        (".linux", args.linux),
+        (".initrd", args.initrd),
+        (".sbat", args.sbat),
+    ];
+    for dtb_path in args.dtbauto.iter() {
+        file_sections.push((".dtbauto", Some(dtb_path.clone())));
+    }
+
+    for (name, path) in file_sections.iter() {
         let Some(path) = path else {
             continue;
         };
-        let d = match std::fs::read(&path) {
+        let d = match std::fs::read(path) {
             Ok(d) => d,
             Err(e) => {
-                eprintln!("{}: {}", path.to_string_lossy(), e);
+                eprintln!("{}: {}", path.display(), e);
                 process::exit(1);
             }
         };
         bld.add_section(name, d, SCN_CNT_INITIALIZED_DATA | SCN_MEM_READ);
     }
+
+    // Add sections from command line
     for (name, data) in [(".cmdline", args.cmdline)] {
         let Some(data) = data else {
             continue;
         };
         bld.add_section(
             name,
-            data.into_encoded_bytes(),
+            data.into_bytes(),
+            SCN_CNT_INITIALIZED_DATA | SCN_MEM_READ,
+        );
+    }
+
+    // Add section from HWIDs
+    if let Some(hwids_dir) = args.hwids {
+        // Read HWID JSON files
+        let hwid_jsons = match read_hwids_dir(&hwids_dir) {
+            Ok(x) => x,
+            Err(e) => {
+                eprintln!("{}: {}", hwids_dir.display(), e);
+                process::exit(1);
+            }
+        };
+        // Generate CHID mappings
+        let mut chid_mappings = Vec::new();
+        for hwid_json in hwid_jsons.iter() {
+            if let Err(e) = hwid_json.generate_chid_mappings(&mut chid_mappings) {
+                eprintln!("{}: {}", hwids_dir.display(), e);
+                process::exit(1);
+            }
+        }
+        // Serialize CHID mappings
+        let mut hwids_section_data = Vec::new();
+        if let Err(e) = serialize_chid_mappings(&mut hwids_section_data, &chid_mappings) {
+            eprintln!("{}: {}", hwids_dir.display(), e);
+            process::exit(1);
+        }
+        // Add HWIDs section
+        bld.add_section(
+            ".hwids",
+            hwids_section_data,
             SCN_CNT_INITIALIZED_DATA | SCN_MEM_READ,
         );
     }
 
     // Calculate section offsets
     if let Err(e) = bld.fixup_offsets() {
-        eprintln!("{}: {}", args.output.to_string_lossy(), e);
+        eprintln!("{}: {}", args.output.display(), e);
         process::exit(1);
     }
 
     // Write output file
     if let Err(e) = std::fs::File::create(&args.output).map(|x| bld.write_pe(x)) {
-        eprintln!("{}: {}", args.output.to_string_lossy(), e);
+        eprintln!("{}: {}", args.output.display(), e);
         process::exit(1);
+    }
+}
+
+/// Representation of the JSON HWID file
+#[derive(Debug, Serialize, Deserialize)]
+struct HwidJson {
+    #[serde(rename = "type")]
+    type_: String,
+    name: Option<String>,
+    compatible: Option<String>,
+    fwid: Option<String>,
+    hwids: Vec<String>,
+}
+
+/// Errors that can occur when generating CHID mappings from HWID JSON
+#[derive(Clone, Debug)]
+enum GenerateChidMappingsError {
+    UnknownType(String),
+    GuidParseError(GuidParseError),
+}
+
+impl From<GuidParseError> for GenerateChidMappingsError {
+    fn from(e: GuidParseError) -> Self {
+        GenerateChidMappingsError::GuidParseError(e)
+    }
+}
+
+impl Display for GenerateChidMappingsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GenerateChidMappingsError::UnknownType(t) => write!(f, "unknown HWID type: {}", t),
+            GenerateChidMappingsError::GuidParseError(e) => e.fmt(f),
+        }
+    }
+}
+
+impl HwidJson {
+    fn generate_chid_mappings<'s>(
+        &'s self,
+        v: &mut Vec<ChidMapping<'s>>,
+    ) -> Result<(), GenerateChidMappingsError> {
+        for hwid in self.hwids.iter() {
+            let guid = Guid::try_from_str(hwid)?;
+            match self.type_.as_str() {
+                "devicetree" => {
+                    v.push(ChidMapping::DeviceTree {
+                        chid: guid,
+                        name: self.name.as_deref(),
+                        compatible: self.compatible.as_deref(),
+                    });
+                }
+                "uefi-fw" => {
+                    v.push(ChidMapping::UefiFw {
+                        chid: guid,
+                        name: self.name.as_deref(),
+                        fwid: self.fwid.as_deref(),
+                    });
+                }
+                _type => {
+                    return Err(GenerateChidMappingsError::UnknownType(_type.to_owned()));
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Read all HWIDs from JSON files in the given directory and its subdirectories
+fn read_hwids_dir(path: &Path) -> io::Result<Vec<HwidJson>> {
+    let mut hwids = Vec::new();
+    for entry in DirWalker::new(path)? {
+        let entry = entry?;
+        if entry.path().is_file()
+            && entry.path().extension().and_then(|s| s.to_str()) == Some("json")
+        {
+            let file = std::fs::File::open(entry.path())?;
+            hwids.push(serde_json::from_reader(file)?);
+        }
+    }
+    Ok(hwids)
+}
+
+/// Recursive directory tree iterator
+struct DirWalker {
+    queue: VecDeque<DirEntry>,
+}
+
+impl DirWalker {
+    fn new(path: &Path) -> io::Result<Self> {
+        let mut queue = VecDeque::new();
+        for entry in std::fs::read_dir(path)? {
+            queue.push_back(entry?);
+        }
+        Ok(DirWalker { queue })
+    }
+}
+
+impl Iterator for DirWalker {
+    type Item = io::Result<DirEntry>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.queue.pop_front().map(|entry| {
+            if entry.path().is_dir() {
+                for entry in std::fs::read_dir(entry.path())? {
+                    self.queue.push_back(entry?);
+                }
+            }
+            Ok(entry)
+        })
     }
 }
 

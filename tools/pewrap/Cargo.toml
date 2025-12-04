@@ -7,4 +7,6 @@ license = "GPL-2.0-only OR GPL-3.0-only"
 [dependencies]
 clap = { version = "4.5.52", features = ["derive"] }
 lace-util = { version = "0.1.0", path = "../../lace-util" }
+serde = { version = "1.0.228", features = ["serde_derive"] }
+serde_json = "1.0.145"
 zerocopy = "0.8.27"
