@@ -149,6 +149,122 @@ impl<'s> ChidMappingIterator<'s> {
     }
 }
 
+impl ChidMapping<'_> {
+    /// Returns the CHID of the mapping
+    pub fn chid(&self) -> &Guid {
+        match self {
+            ChidMapping::DeviceTree { chid, .. } => chid,
+            ChidMapping::UefiFw { chid, .. } => chid,
+            ChidMapping::Unknown { chid, .. } => chid,
+        }
+    }
+
+    /// Provides the kind/type of the mapping when serialized
+    #[cfg(feature = "std")]
+    fn serialized_kind(&self) -> u32 {
+        match self {
+            ChidMapping::DeviceTree { .. } => CHID_MAPPING_DESCRIPTOR_DEVICE_TREE,
+            ChidMapping::UefiFw { .. } => CHID_MAPPING_DESCRIPTOR_UEFI_FW,
+            ChidMapping::Unknown { kind, .. } => *kind,
+        }
+    }
+
+    /// Calculates the size of the mapping when serialized
+    #[cfg(feature = "std")]
+    fn serialized_size(&self) -> usize {
+        size_of::<ChidMappingHeader>()
+            + match self {
+                ChidMapping::DeviceTree { .. } => size_of::<ChidMappingDeviceTree>(),
+                ChidMapping::UefiFw { .. } => size_of::<ChidMappingUefiFw>(),
+                ChidMapping::Unknown { body, .. } => body.len(),
+            }
+    }
+}
+
+/// Serialize a set of CHID mappings to the given writer
+/// Serializing Unknown mappings is supported, but their body is written as-is
+/// which means that any string offsets inside them will likely be invalid.
+#[cfg(feature = "std")]
+pub fn serialize_chid_mappings<'s, W: std::io::Write>(
+    mut w: W,
+    mappings: &[ChidMapping<'s>],
+) -> std::io::Result<()> {
+    // Figure out the size of formatted data to know where string data starts
+    let formatted_size: usize = mappings.iter().map(ChidMapping::serialized_size).sum();
+    let formatted_size = formatted_size + size_of::<ChidMappingHeader>() + 8; // Terminator entry + its body
+    // Buffer to store the strings until we write them
+    let mut string_data: Vec<u8> = Vec::new();
+    // De-duplication map for strings
+    let mut string_dedup = std::collections::HashMap::<&'s str, u32>::new();
+
+    // Write a serialized string to string_data and return its offset
+    let mut serialize_string = |s: Option<&'s str>| {
+        if let Some(s) = s {
+            if let Some(&offset) = string_dedup.get(s) {
+                return offset;
+            }
+            let offset = formatted_size + string_data.len();
+            string_data.extend_from_slice(s.as_bytes());
+            string_data.push(0); // NUL terminator
+            string_dedup.insert(s, offset as u32);
+            offset as u32
+        } else {
+            0
+        }
+    };
+
+    for mapping in mappings.iter() {
+        w.write_all(
+            ChidMappingHeader {
+                descriptor: (mapping.serialized_kind() << 28) | mapping.serialized_size() as u32,
+                chid: *mapping.chid(),
+            }
+            .as_bytes(),
+        )?;
+
+        match mapping {
+            ChidMapping::DeviceTree {
+                name, compatible, ..
+            } => {
+                w.write_all(
+                    ChidMappingDeviceTree {
+                        name_offset: serialize_string(*name),
+                        compatible_offset: serialize_string(*compatible),
+                    }
+                    .as_bytes(),
+                )?;
+            }
+            ChidMapping::UefiFw { name, fwid, .. } => {
+                w.write_all(
+                    ChidMappingUefiFw {
+                        name_offset: serialize_string(*name),
+                        fwid_offset: serialize_string(*fwid),
+                    }
+                    .as_bytes(),
+                )?;
+            }
+            ChidMapping::Unknown {
+                kind: _,
+                chid: _,
+                body,
+            } => {
+                w.write_all(body)?;
+            }
+        }
+    }
+
+    // Write the terminator entry
+    // NOTE: systemd-ukify writes a full sized entry with 2 x u32s as body here, so
+    // we do the same to make the outputs compatible with possibly broken parsers.
+    w.write_all(ChidMappingHeader::default().as_bytes())?;
+    w.write_all(&[0u8; 8])?;
+
+    // Write string data
+    w.write_all(&string_data)?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2046,5 +2162,104 @@ mod tests {
             },
         ];
         assert_eq!(r, e);
+    }
+
+    #[test]
+    fn test_serialize_single() {
+        let mut actual = Vec::new();
+        serialize_chid_mappings(
+            &mut actual,
+            &[ChidMapping::DeviceTree {
+                chid: Guid::default(),
+                name: Some("MyDevice"),
+                compatible: Some("my,compatible"),
+            }],
+        )
+        .unwrap();
+
+        let mut expected = Vec::new();
+        push_mapping(
+            &mut expected,
+            ChidMappingHeader {
+                descriptor: 0x1000_001c,
+                chid: Guid::default(),
+            },
+            ChidMappingDeviceTree {
+                name_offset: 56,
+                compatible_offset: 65,
+            }
+            .as_bytes(),
+        ); // type 1, length 28
+        push_mapping(&mut expected, ChidMappingHeader::default(), &[0u8; 8]); // terminator (long, ukify compatible)
+        push_strings(&mut expected, &["MyDevice", "my,compatible"]);
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_serialize_multiple() {
+        let mut actual = Vec::new();
+        serialize_chid_mappings(
+            &mut actual,
+            &[
+                ChidMapping::DeviceTree {
+                    chid: Guid::default(),
+                    name: Some("MyDevice"),
+                    compatible: Some("my,compatible"),
+                },
+                ChidMapping::Unknown {
+                    kind: 5,
+                    chid: Guid::default(),
+                    body: &[0x42u8; 180],
+                },
+                ChidMapping::UefiFw {
+                    chid: Guid::read_from_bytes(&[1u8; 16]).unwrap(),
+                    name: Some("MyFirmware"),
+                    fwid: Some("FWID1234"),
+                },
+            ],
+        )
+        .unwrap();
+
+        let mut expected = Vec::new();
+        push_mapping(
+            &mut expected,
+            ChidMappingHeader {
+                descriptor: 0x1000_001c,
+                chid: Guid::default(),
+            },
+            ChidMappingDeviceTree {
+                name_offset: 284,
+                compatible_offset: 293,
+            }
+            .as_bytes(),
+        ); // type 1, length 28
+        push_mapping(
+            &mut expected,
+            ChidMappingHeader {
+                descriptor: 0x5000_00c8,
+                chid: Guid::default(),
+            },
+            &[0x42u8; 180],
+        ); // unknown type 5, length 200, skipped
+        push_mapping(
+            &mut expected,
+            ChidMappingHeader {
+                descriptor: 0x2000_001c,
+                chid: Guid::read_from_bytes(&[1u8; 16]).unwrap(),
+            },
+            ChidMappingUefiFw {
+                name_offset: 307,
+                fwid_offset: 318,
+            }
+            .as_bytes(),
+        ); // type 2, length 28
+        push_mapping(&mut expected, ChidMappingHeader::default(), &[0u8; 8]); // terminator (long, ukify compatible)
+        push_strings(
+            &mut expected,
+            &["MyDevice", "my,compatible", "MyFirmware", "FWID1234"],
+        );
+
+        assert_eq!(actual, expected);
     }
 }
