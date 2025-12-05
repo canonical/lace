@@ -315,6 +315,8 @@ def build_and_inject_stubble(args, config):
         os.path.join(args.dir, "initrd.img"),
         "--cmdline",
         f"console=tty0 root=UUID={gfs.vfs_uuid(roots[0])} rw",
+        "--hwids",
+        "data/hwids/json",
     ]
     subprocess.run(pewrap_cmd, check=True)
 
