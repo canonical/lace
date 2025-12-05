@@ -55,13 +55,19 @@ fn main() -> Status {
     uefi::println!("SMBIOS table {:#?} {}", s.as_ptr(), s.len());
     system::with_stdout(|w| lace_util::hexdump(w, s)).unwrap();
 
-    let smbios0 = find_smbios_table_by_type::<SmbiosTableType0>(s, 0).expect("need table 0");
+    let smbios0 = find_smbios_table_by_type::<SmbiosTableType0>(s, 0)
+        .ok()
+        .flatten()
+        .expect("need table 0");
     uefi::println!("{:#x?}", smbios0.table());
-    let smbios1 = find_smbios_table_by_type::<SmbiosTableType1>(s, 1).expect("need table 1");
+    let smbios1 = find_smbios_table_by_type::<SmbiosTableType1>(s, 1)
+        .ok()
+        .flatten()
+        .expect("need table 1");
     uefi::println!("{:#x?}", smbios1.table());
 
     let not_found = find_smbios_table_by_type::<SmbiosHeader>(s, 42);
-    assert!(matches!(not_found, Err(SmbiosError::TableNotFound)));
+    assert!(matches!(not_found, Ok(None)));
 
     // Parse our own loaded image
     let li = boot::open_protocol_exclusive::<LoadedImage>(boot::image_handle())

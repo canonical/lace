@@ -2,6 +2,7 @@
 // Copyright (C) 2025, Canonical Ltd.
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 
+use core::fmt::Display;
 use core::marker::PhantomData;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
@@ -116,10 +117,13 @@ pub struct SmbiosTableType3 {
     pub asset_tag_number: u8,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum SmbiosError {
-    TableNotFound,
-    InvalidTable,
+#[derive(Clone, Copy, Debug, Default)]
+pub struct SmbiosParseError;
+
+impl Display for SmbiosParseError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "Invalid SMBIOS table")
+    }
 }
 
 pub struct SmbiosTable<'s, T: FromBytes + KnownLayout + Immutable> {
@@ -146,44 +150,44 @@ impl<'s, T: FromBytes + KnownLayout + Immutable> SmbiosTable<'s, T> {
 pub fn find_smbios_table_by_type<'s, T: FromBytes + KnownLayout + Immutable>(
     mut s: &'s [u8],
     type_: u8,
-) -> Result<SmbiosTable<'s, T>, SmbiosError> {
+) -> Result<Option<SmbiosTable<'s, T>>, SmbiosParseError> {
     loop {
         // Get table header
         let Ok((header, _)) = SmbiosHeader::ref_from_prefix(s) else {
-            return Err(SmbiosError::InvalidTable);
+            return Err(SmbiosParseError);
         };
 
         // Check if the size in the header covers the header
         if (header.length as usize) < core::mem::size_of::<SmbiosHeader>() {
-            return Err(SmbiosError::InvalidTable);
+            return Err(SmbiosParseError);
         }
 
         // Check if we really have as much data as specified
         let Some((table, rest)) = s.split_at_checked(header.length as usize) else {
-            return Err(SmbiosError::InvalidTable);
+            return Err(SmbiosParseError);
         };
 
         // Find the end of the strings section
         let Some(end_of_strings) = crate::find_byte_sequence(rest, b"\0\0") else {
-            return Err(SmbiosError::InvalidTable);
+            return Err(SmbiosParseError);
         };
 
         match header.type_ {
             127 => {
                 // End-of-tables indicator
-                return Err(SmbiosError::TableNotFound);
+                return Ok(None);
             }
             t if t == type_ => {
                 // Matching type
                 // Check if the size in the header covers the table
                 if (header.length as usize) < core::mem::size_of::<T>() {
-                    return Err(SmbiosError::InvalidTable);
+                    return Err(SmbiosParseError);
                 }
-                return Ok(SmbiosTable {
+                return Ok(Some(SmbiosTable {
                     table_type: PhantomData,
                     table,
                     strings: &rest[..end_of_strings],
-                });
+                }));
             }
             _ => {
                 // Move to next table
@@ -225,8 +229,9 @@ mod test {
         push_table(&mut buf, 127, size_of::<SmbiosHeader>(), b"\0\0");
 
         // Should find Type 1 successfully
-        let tbl: SmbiosTable<'_, SmbiosTableType1> =
-            find_smbios_table_by_type(&buf, 1).expect("type 1 should be found");
+        let tbl = find_smbios_table_by_type::<SmbiosTableType1>(&buf, 1)
+            .unwrap()
+            .unwrap();
 
         // Header type should be 1 and length should match struct size
         assert_eq!(tbl.table().header.type_, 1);
@@ -250,9 +255,12 @@ mod test {
         // End-of-table 127
         push_table(&mut buf, 127, size_of::<SmbiosHeader>(), b"\0\0");
 
-        let res: Result<SmbiosTable<'_, SmbiosTableType1>, SmbiosError> =
-            find_smbios_table_by_type(&buf, 1);
-        assert!(matches!(res, Err(SmbiosError::TableNotFound)));
+        // Should not find Type 1
+        assert!(
+            find_smbios_table_by_type::<SmbiosTableType1>(&buf, 1)
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[test]
@@ -263,9 +271,8 @@ mod test {
             0x00, 0x00, // handle
                   // no payload, no strings
         ];
-        let res: Result<SmbiosTable<'_, SmbiosTableType1>, SmbiosError> =
-            find_smbios_table_by_type(&buf, 1);
-        assert!(matches!(res, Err(SmbiosError::InvalidTable)));
+        let res = find_smbios_table_by_type::<SmbiosTableType1>(&buf, 1);
+        assert!(matches!(res, Err(SmbiosParseError)));
     }
 
     #[test]
@@ -274,8 +281,7 @@ mod test {
         let mut buf: Vec<u8> = Vec::new();
         push_table(&mut buf, 1, size_of::<SmbiosTableType1>(), b"ONLYONE\0");
 
-        let res: Result<SmbiosTable<'_, SmbiosTableType1>, SmbiosError> =
-            find_smbios_table_by_type(&buf, 1);
-        assert!(matches!(res, Err(SmbiosError::InvalidTable)));
+        let res = find_smbios_table_by_type::<SmbiosTableType1>(&buf, 1);
+        assert!(matches!(res, Err(SmbiosParseError)));
     }
 }
