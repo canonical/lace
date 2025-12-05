@@ -362,9 +362,55 @@ def do_start(args):
         "if=pflash,unit=1,format=raw,file="
         + os.path.join(args.dir, config["fw"]["vars"]),
         "-drive",
-        f"format={config['disk']['format']},file="
+        f"if=none,id=disk,format={config['disk']['format']},file="
         + os.path.join(args.dir, config["disk"]["file"]),
+        "-device",
+        "virtio-blk-pci,drive=disk,bootindex=1",
     ]
+
+    # Add SMBIOS table to QEMU command
+    if "smbios" in config:
+        qemu_cmd.extend(["-smbios", "file=" + os.path.join(args.dir, config["smbios"])])
+
+    # Install EDID file using fakeedid.efi in a vvfat drive
+    if "edid" in config:
+        # Build fakeedid.efi
+        subprocess.run(
+            [
+                "cargo",
+                "build",
+                "-p",
+                "fakeedid",
+                "--target",
+                f"{config['arch']}-unknown-uefi",
+            ],
+            check=True,
+        )
+        # Create EDID drive
+        edid_drive = os.path.join(args.dir, "edid_drive")
+        os.makedirs(os.path.join(edid_drive, "EFI", "BOOT"), exist_ok=True)
+        shutil.copyfile(
+            os.path.join(
+                "target",
+                f"{config['arch']}-unknown-uefi",
+                "debug",
+                "fakeedid.efi",
+            ),
+            os.path.join(
+                edid_drive, "EFI", "BOOT", f"BOOT{EFI_SUFFIXES[config['arch']]}"
+            ),
+        )
+        shutil.copyfile(
+            os.path.join(args.dir, config["edid"]), os.path.join(edid_drive, "edid.bin")
+        )
+        qemu_cmd.extend(
+            [
+                "-drive",
+                f"file=fat:rw:{edid_drive},format=raw,if=none,id=edid_drive",
+                "-device",
+                "virtio-blk-pci,drive=edid_drive,bootindex=0",
+            ]
+        )
 
     # Add cloud-init seed on first boot
     if not os.path.exists(os.path.join(args.dir, "cloud-init-seed.img")):
