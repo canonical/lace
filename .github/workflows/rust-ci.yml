@@ -70,4 +70,4 @@ jobs:
           toolchain: stable
 
       - name: Run unit tests
-        run: ./scripts/cargo_ci.py test --workspace --exclude lace-stubble --exclude u-boot-sys
+        run: ./scripts/cargo_ci.py test --workspace --exclude lace-stubble --exclude fakeedid --exclude u-boot-sys
