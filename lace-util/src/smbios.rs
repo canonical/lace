@@ -133,8 +133,8 @@ pub struct SmbiosTable<'s, T: FromBytes + KnownLayout + Immutable> {
 }
 
 impl<'s, T: FromBytes + KnownLayout + Immutable> SmbiosTable<'s, T> {
-    pub fn table(&self) -> &'s T {
-        let (t, _) = T::ref_from_prefix(self.table).unwrap();
+    pub fn table(&self) -> T {
+        let (t, _) = T::read_from_prefix(self.table).unwrap();
         t
     }
 
@@ -153,7 +153,7 @@ pub fn find_smbios_table_by_type<'s, T: FromBytes + KnownLayout + Immutable>(
 ) -> Result<Option<SmbiosTable<'s, T>>, SmbiosParseError> {
     loop {
         // Get table header
-        let Ok((header, _)) = SmbiosHeader::ref_from_prefix(s) else {
+        let Ok((header, _)) = SmbiosHeader::read_from_prefix(s) else {
             return Err(SmbiosParseError);
         };
 

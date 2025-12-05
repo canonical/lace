@@ -65,7 +65,10 @@ fn main() {
             process::exit(1);
         }
     };
-    let pe = match parse_pe(&data) {
+    let (_pe, mut bld) = match parse_pe(&data).and_then(|pe| {
+        let bld = PeRebuilder::from_ref(&pe)?;
+        Ok((pe, bld))
+    }) {
         Ok(x) => x,
         Err(e) => {
             eprintln!("{}: {}", args.stub.display(), e);
@@ -90,8 +93,6 @@ fn main() {
             );
         }
     */
-
-    let mut bld = PeRebuilder::from_ref(&pe);
 
     // Add sections from files
     let mut file_sections = vec![
@@ -305,20 +306,19 @@ impl Display for PeRebuildError {
 }
 
 impl<'s> PeRebuilder<'s> {
-    fn from_ref(r: &PeRef<'s>) -> Self {
+    fn from_ref(r: &PeRef<'s>) -> Result<Self, PeParseError> {
         let mut sections = Vec::new();
-        for shdr in r.sect_hdrs.iter().cloned() {
-            let i = shdr.pointer_to_raw_data as usize;
-            let j = i + shdr.size_of_raw_data as usize;
-            sections.push((shdr, r.data[i..j].to_owned()));
+        for result in r.raw_sections() {
+            let (shdr, data) = result?;
+            sections.push((shdr, data.to_owned()));
         }
-        PeRebuilder {
+        Ok(PeRebuilder {
             dos_hdr: r.dos_hdr.clone(),
             dos_data: r.dos_data,
             nt_hdrs: r.nt_hdrs.clone(),
             nt_data: r.nt_data,
             sections,
-        }
+        })
     }
 
     fn add_section(&mut self, name: &str, data: Vec<u8>, characteristics: u32) {

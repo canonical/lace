@@ -54,7 +54,6 @@ fn main() -> Status {
     let s: &'static _ = find_smbios_tables().unwrap();
     uefi::println!("SMBIOS table {:#?} {}", s.as_ptr(), s.len());
     system::with_stdout(|w| lace_util::hexdump(w, s)).unwrap();
-
     let smbios0 = find_smbios_table_by_type::<SmbiosTableType0>(s, 0)
         .ok()
         .flatten()
@@ -78,29 +77,30 @@ fn main() -> Status {
 
     uefi::println!("{:#x?}", pe.nt_hdrs);
     uefi::println!("{:#x?}", pe.sect_hdrs);
+    let mut kernel = None;
+    let mut initrd = None;
+    let mut cmdline = None;
 
     uefi::println!("PE sections");
-    for sect in pe.sect_hdrs.iter() {
-        uefi::println!("{:#x?}", str::from_utf8(sect.name()).unwrap());
+    for result in pe.virtual_sections() {
+        let (sect, data) = result.expect("failed to read section");
+        uefi::println!(
+            "  {:<8} {:08x} {:08x}",
+            str::from_utf8(sect.name()).unwrap(),
+            sect.virtual_address,
+            sect.virtual_size
+        );
+
+        if sect.name() == b".linux" {
+            kernel = Some(data);
+        } else if sect.name() == b".initrd" {
+            initrd = Some(data);
+        } else if sect.name() == b".cmdline" {
+            cmdline = Some(data);
+        }
     }
 
-    // Find kernel
-    let kernel = pe
-        .find_section_header(".linux")
-        .map(|shdr| {
-            pe.virtual_section_data(shdr)
-                .expect("invalid .linux section")
-        })
-        .expect("cannot boot without .linux section");
-    // Find initrd
-    let initrd = pe.find_section_header(".initrd").map(|shdr| {
-        pe.virtual_section_data(shdr)
-            .expect("invalid .initrd section")
-    });
-    let cmdline = pe.find_section_header(".cmdline").map(|shdr| {
-        pe.virtual_section_data(shdr)
-            .expect("invalid .cmdline section")
-    });
+    let kernel = kernel.expect("cannot boot without .linux section");
 
     boot_linux(kernel, initrd, cmdline).expect("failed to start linux");
 

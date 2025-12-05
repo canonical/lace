@@ -150,34 +150,27 @@ impl SectionHeader {
 #[derive(Clone, Debug)]
 pub struct PeRef<'a> {
     pub data: &'a [u8],
-    pub dos_hdr: &'a DosHeader,
+    pub dos_hdr: DosHeader,
     pub dos_data: &'a [u8],
-    pub nt_hdrs: &'a NtHeaders64,
+    pub nt_hdrs: NtHeaders64,
     pub nt_data: &'a [u8],
-    pub sect_hdrs: &'a [SectionHeader],
+    pub sect_hdrs: &'a [u8],
+}
+
+pub struct RawSectionIterator<'a> {
+    pe: PeRef<'a>,
+    index: usize,
+}
+
+pub struct VirtualSectionIterator<'a> {
+    pe: PeRef<'a>,
+    index: usize,
 }
 
 #[derive(Clone, Copy, Debug)]
 pub enum PeParseError {
     Truncated,
     BadHeader,
-}
-
-impl<'a> PeRef<'a> {
-    pub fn find_section_header(&self, name: &str) -> Option<&'a SectionHeader> {
-        self.sect_hdrs
-            .iter()
-            .find(|&sect| sect.name().eq(name.as_bytes()))
-    }
-
-    pub fn virtual_section_data(&self, shdr: &SectionHeader) -> Result<&'a [u8], PeParseError> {
-        let start = shdr.virtual_address as usize;
-        let end = start + shdr.virtual_size as usize;
-        match self.data.get(start..end) {
-            Some(data) => Ok(data),
-            None => Err(PeParseError::Truncated),
-        }
-    }
 }
 
 impl Display for PeParseError {
@@ -191,20 +184,17 @@ impl Display for PeParseError {
 
 pub fn parse_pe<'a>(s: &'a [u8]) -> Result<PeRef<'a>, PeParseError> {
     // Get and validate the DOS header
-    let Ok((dos_hdr, dos_data)) = DosHeader::ref_from_prefix(s) else {
-        return Err(PeParseError::Truncated);
-    };
+    let (dos_hdr, dos_data) =
+        DosHeader::read_from_prefix(s).map_err(|_| PeParseError::Truncated)?;
     if dos_hdr.e_magic != DOS_SIGNATURE {
         return Err(PeParseError::BadHeader);
     }
 
     // Get and validate the 64-bit NT headers
-    let Some((nt_hdrs, nt_data)) = s
+    let (nt_hdrs, nt_data) = s
         .get(dos_hdr.e_lfanew as usize..)
-        .and_then(|s| NtHeaders64::ref_from_prefix(s).ok())
-    else {
-        return Err(PeParseError::Truncated);
-    };
+        .and_then(|s| NtHeaders64::read_from_prefix(s).ok())
+        .ok_or(PeParseError::Truncated)?;
     if nt_hdrs.signature != NT_SIGNATURE {
         return Err(PeParseError::BadHeader);
     }
@@ -216,28 +206,96 @@ pub fn parse_pe<'a>(s: &'a [u8]) -> Result<PeRef<'a>, PeParseError> {
     }
 
     // Get the section headers as a slice
-    let Some((sect_hdrs, _)) = (dos_hdr.e_lfanew as usize)
+    let sect_hdrs_size = (nt_hdrs.file_header.number_of_sections as usize)
+        .checked_mul(size_of::<SectionHeader>())
+        .ok_or(PeParseError::Truncated)?;
+    let sect_hdrs = (dos_hdr.e_lfanew as usize)
         .checked_add(offset_of!(NtHeaders64, optional_header))
         .and_then(|x| x.checked_add(nt_hdrs.file_header.size_of_optional_header as usize))
-        .and_then(|x| s.get(x..))
-        .and_then(|s| {
-            <[SectionHeader]>::ref_from_prefix_with_elems(
-                s,
-                nt_hdrs.file_header.number_of_sections as usize,
-            )
-            .ok()
-        })
-    else {
-        return Err(PeParseError::Truncated);
-    };
+        .and_then(|x| s.get(x..x + sect_hdrs_size))
+        .ok_or(PeParseError::Truncated)?;
 
+    let dos_data = &dos_data[..dos_hdr.e_lfanew as usize - size_of::<DosHeader>()];
+    let nt_data = &nt_data
+        [..nt_hdrs.file_header.size_of_optional_header as usize - size_of::<OptionalHeader64>()];
     Ok(PeRef {
         data: s,
         dos_hdr,
-        dos_data: &dos_data[..dos_hdr.e_lfanew as usize - size_of::<DosHeader>()],
+        dos_data,
         nt_hdrs,
-        nt_data: &nt_data[..nt_hdrs.file_header.size_of_optional_header as usize
-            - size_of::<OptionalHeader64>()],
+        nt_data,
         sect_hdrs,
     })
+}
+
+impl<'a> PeRef<'a> {
+    pub fn num_sections(&self) -> usize {
+        self.nt_hdrs.file_header.number_of_sections as usize
+    }
+
+    pub fn nth_section(&self, n: usize) -> Option<SectionHeader> {
+        if n >= self.num_sections() {
+            return None;
+        }
+        // NOTE: 'unwrap()' cannot actually panic here because self.sect_hdrs has size
+        // exactly of `self.num_sections() * size_of::<SectionHeader>()`, and 'n' is
+        // guaranteed to be less than 'self.num_sections()', so there is always enough of
+        // data left to read a SectionHeader.
+        let (shdr, _) =
+            SectionHeader::read_from_prefix(&self.sect_hdrs[n * size_of::<SectionHeader>()..])
+                .unwrap();
+        Some(shdr)
+    }
+
+    pub fn virtual_sections(&self) -> VirtualSectionIterator<'a> {
+        VirtualSectionIterator {
+            pe: self.clone(),
+            index: 0,
+        }
+    }
+
+    pub fn raw_sections(&self) -> RawSectionIterator<'a> {
+        RawSectionIterator {
+            pe: self.clone(),
+            index: 0,
+        }
+    }
+}
+
+impl<'a> Iterator for RawSectionIterator<'a> {
+    type Item = Result<(SectionHeader, &'a [u8]), PeParseError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let shdr = self.pe.nth_section(self.index)?;
+        self.index += 1;
+
+        (shdr.pointer_to_raw_data as usize)
+            .checked_add(shdr.size_of_raw_data as usize)
+            .and_then(|end_of_raw_data| {
+                self.pe
+                    .data
+                    .get(shdr.pointer_to_raw_data as usize..end_of_raw_data)
+                    .map(|data| Ok((shdr, data)))
+                    .or(Some(Err(PeParseError::Truncated)))
+            })
+    }
+}
+
+impl<'a> Iterator for VirtualSectionIterator<'a> {
+    type Item = Result<(SectionHeader, &'a [u8]), PeParseError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let shdr = self.pe.nth_section(self.index)?;
+        self.index += 1;
+
+        (shdr.virtual_address as usize)
+            .checked_add(shdr.virtual_size as usize)
+            .and_then(|end_of_virtual_section| {
+                self.pe
+                    .data
+                    .get(shdr.virtual_address as usize..end_of_virtual_section)
+                    .map(|data| Ok((shdr, data)))
+                    .or(Some(Err(PeParseError::Truncated)))
+            })
+    }
 }
