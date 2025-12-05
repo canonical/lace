@@ -13,6 +13,7 @@ pub mod peimage;
 pub mod sha1;
 pub mod smbios;
 
+use core::cmp::Ordering;
 use core::fmt::{self, Debug, Display, Write};
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
@@ -220,5 +221,13 @@ pub const fn guid_str(s: &str) -> Guid {
     match Guid::try_from_str(s) {
         Ok(guid) => guid,
         Err(_) => panic!("invalid GUID literal"),
+    }
+}
+
+/// Compare two version numbers in "major.minor" format.
+pub fn cmp_maj_min(maj_a: u8, min_a: u8, maj_b: u8, min_b: u8) -> Ordering {
+    match maj_a.cmp(&maj_b) {
+        Ordering::Equal => min_a.cmp(&min_b),
+        ord => ord,
     }
 }

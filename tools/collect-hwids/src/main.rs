@@ -4,13 +4,10 @@
 
 use clap::Parser;
 use lace_util::chid::*;
-use lace_util::edid::*;
-use lace_util::smbios::*;
 use regex::bytes::Regex;
 use std::error::Error;
+use std::ffi::OsString;
 use std::io::Write;
-use std::{cmp::Ordering, ffi::OsString};
-use zerocopy::FromBytes;
 use zip::{CompressionMethod, ZipWriter, write::SimpleFileOptions};
 
 const SMBIOS_EP_PATH: &str = "/sys/firmware/dmi/tables/smbios_entry_point";
@@ -47,9 +44,26 @@ fn main() {
 
     // Collect EDIDs
     let edids = collect_edids();
+    let edid = if !edids.is_empty() {
+        if edids.len() > 1 {
+            eprintln!(
+                "warning: more than one EDID found, using first one for internal panel ID, re-run with external screens disconnected"
+            )
+        }
+        Some(edids[0].1.as_slice())
+    } else {
+        None
+    };
 
     // Fill CHID sources
-    let srcs = fill_chid_sources(smbios_ep_data.as_deref(), &smbios_data, &edids);
+    let srcs =
+        match chid_sources_from_smbios_and_edid(smbios_ep_data.as_deref(), &smbios_data, edid) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("error: failed to fill CHID sources: {}", e);
+                std::process::exit(1);
+            }
+        };
 
     // Write sources and computed CHIDs to stdout
     let _ = write_sources_and_chids(&mut std::io::stdout(), &srcs);
@@ -73,102 +87,6 @@ fn main() {
             eprintln!("error: failed to write zip {:?}: {}", &args.output, e);
             std::process::exit(1);
         }
-    }
-}
-
-fn fill_chid_sources(
-    smbios_ep: Option<&[u8]>,
-    smbios: &[u8],
-    edids: &[(String, Vec<u8>)],
-) -> ChidSources {
-    fn str_from_maybe_u8(s: Option<&[u8]>) -> Option<String> {
-        s.and_then(|s| str::from_utf8(s).ok()).map(|s| s.to_owned())
-    }
-
-    let mut chid_sources = ChidSources::default();
-
-    if let Ok(type1) = find_smbios_table_by_type::<SmbiosTableType1>(smbios, 1) {
-        chid_sources[CHID_SMBIOS_MANUFACTURER] =
-            str_from_maybe_u8(type1.get_string(type1.table().manufacturer as usize));
-        chid_sources[CHID_SMBIOS_FAMILY] =
-            str_from_maybe_u8(type1.get_string(type1.table().family as usize));
-        chid_sources[CHID_SMBIOS_PRODUCT_NAME] =
-            str_from_maybe_u8(type1.get_string(type1.table().product_name as usize));
-        chid_sources[CHID_SMBIOS_PRODUCT_SKU] =
-            str_from_maybe_u8(type1.get_string(type1.table().sku_number as usize));
-    }
-
-    if let Ok(type2) = find_smbios_table_by_type::<SmbiosTableType2>(smbios, 2) {
-        chid_sources[CHID_SMBIOS_BASEBOARD_MANUFACTURER] =
-            str_from_maybe_u8(type2.get_string(type2.table().manufacturer as usize));
-        chid_sources[CHID_SMBIOS_BASEBOARD_PRODUCT] =
-            str_from_maybe_u8(type2.get_string(type2.table().product_name as usize));
-    }
-
-    let is_smbios_atleast_24 = smbios_ep
-        .map(|ep| {
-            let (maj, min) = if ep.starts_with(b"_SM3_") {
-                let Ok((sm3_ep, _)) = Smbios3EntryPoint::ref_from_prefix(ep) else {
-                    return false;
-                };
-                (sm3_ep.major_version, sm3_ep.minor_version)
-            } else if ep.starts_with(b"_SM_") {
-                let Ok((sm_ep, _)) = SmbiosEntryPoint::ref_from_prefix(ep) else {
-                    return false;
-                };
-                (sm_ep.major_version, sm_ep.minor_version)
-            } else {
-                return false;
-            };
-            cmp_maj_min(maj, min, 2, 4).is_ge()
-        })
-        .unwrap_or_else(|| false);
-
-    if is_smbios_atleast_24 {
-        if let Ok(type0) = find_smbios_table_by_type::<SmbiosTableType0_24>(smbios, 0) {
-            chid_sources[CHID_SMBIOS_BIOS_VENDOR] =
-                str_from_maybe_u8(type0.get_string(type0.table().vendor as usize));
-            chid_sources[CHID_SMBIOS_BIOS_VERSION] =
-                str_from_maybe_u8(type0.get_string(type0.table().bios_version as usize));
-            // These are defined to be in lower-case hex with 2-digit zero padding
-            chid_sources[CHID_SMBIOS_BIOS_MAJOR] =
-                Some(format!("{:02x}", type0.table().bios_major_release));
-            chid_sources[CHID_SMBIOS_BIOS_MINOR] =
-                Some(format!("{:02x}", type0.table().bios_minor_release));
-        }
-    } else if let Ok(type0) = find_smbios_table_by_type::<SmbiosTableType0>(smbios, 0) {
-        chid_sources[CHID_SMBIOS_BIOS_VENDOR] =
-            str_from_maybe_u8(type0.get_string(type0.table().vendor as usize));
-        chid_sources[CHID_SMBIOS_BIOS_VERSION] =
-            str_from_maybe_u8(type0.get_string(type0.table().bios_version as usize));
-    }
-
-    if let Ok(type3) = find_smbios_table_by_type::<SmbiosTableType3>(smbios, 3) {
-        // This is defined to be in lower-case hex with no padding
-        chid_sources[CHID_SMBIOS_ENCLOSURE_TYPE] = Some(format!("{:x}", type3.table().type_));
-    }
-
-    if !edids.is_empty() {
-        if edids.len() > 1 {
-            eprintln!(
-                "warning: more than one EDID found, using first one for internal panel ID, re-run with external screens disconnected"
-            )
-        }
-        match ParsedEdid::parse(&edids[0].1).and_then(|e| e.panel_id()) {
-            Ok(panel_id) => chid_sources[CHID_EDID_PANEL] = Some(panel_id),
-            Err(e) => {
-                eprintln!("warning: failed to parse EDID for {}: {}", edids[0].0, e)
-            }
-        }
-    }
-
-    chid_sources
-}
-
-fn cmp_maj_min(maj_a: u8, min_a: u8, maj_b: u8, min_b: u8) -> Ordering {
-    match maj_a.cmp(&maj_b) {
-        Ordering::Equal => min_a.cmp(&min_b),
-        ord => ord,
     }
 }
 

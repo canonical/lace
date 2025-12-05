@@ -2,7 +2,11 @@
 // Copyright (C) 2025, Canonical Ltd.
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 
+use crate::edid::*;
 use crate::sha1::*;
+use crate::smbios::*;
+use crate::*;
+use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::mem::size_of;
@@ -108,6 +112,117 @@ pub const CHID_TYPES: [usize; 18] = [
 ];
 
 pub type ChidSources = [Option<String>; CHID_SOURCE_MAX];
+
+#[derive(Clone, Copy, Debug)]
+pub enum ChidSourcesError {
+    SmbiosError(SmbiosParseError),
+    EdidError(EdidParseError),
+}
+
+impl Display for ChidSourcesError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            ChidSourcesError::SmbiosError(e) => Display::fmt(e, f),
+            ChidSourcesError::EdidError(e) => Display::fmt(e, f),
+        }
+    }
+}
+
+impl From<SmbiosParseError> for ChidSourcesError {
+    fn from(e: SmbiosParseError) -> Self {
+        ChidSourcesError::SmbiosError(e)
+    }
+}
+
+impl From<EdidParseError> for ChidSourcesError {
+    fn from(e: EdidParseError) -> Self {
+        ChidSourcesError::EdidError(e)
+    }
+}
+
+pub fn chid_sources_from_smbios_and_edid(
+    smbios_ep: Option<&[u8]>,
+    smbios: &[u8],
+    edid: Option<&[u8]>,
+) -> Result<ChidSources, ChidSourcesError> {
+    fn str_from_maybe_u8(s: Option<&[u8]>) -> Option<String> {
+        s.and_then(|s| str::from_utf8(s).ok()).map(String::from)
+    }
+
+    let mut chid_sources = ChidSources::default();
+
+    if let Some(type1) = find_smbios_table_by_type::<SmbiosTableType1>(smbios, 1)? {
+        let table = type1.table();
+        chid_sources[CHID_SMBIOS_MANUFACTURER] =
+            str_from_maybe_u8(type1.get_string(table.manufacturer as usize));
+        chid_sources[CHID_SMBIOS_FAMILY] =
+            str_from_maybe_u8(type1.get_string(table.family as usize));
+        chid_sources[CHID_SMBIOS_PRODUCT_NAME] =
+            str_from_maybe_u8(type1.get_string(table.product_name as usize));
+        chid_sources[CHID_SMBIOS_PRODUCT_SKU] =
+            str_from_maybe_u8(type1.get_string(table.sku_number as usize));
+    }
+
+    if let Some(type2) = find_smbios_table_by_type::<SmbiosTableType2>(smbios, 2)? {
+        let table = type2.table();
+        chid_sources[CHID_SMBIOS_BASEBOARD_MANUFACTURER] =
+            str_from_maybe_u8(type2.get_string(table.manufacturer as usize));
+        chid_sources[CHID_SMBIOS_BASEBOARD_PRODUCT] =
+            str_from_maybe_u8(type2.get_string(table.product_name as usize));
+    }
+
+    let is_smbios_atleast_24 = smbios_ep
+        .map(|ep| {
+            let (maj, min) = if ep.starts_with(b"_SM3_") {
+                let Ok((sm3_ep, _)) = Smbios3EntryPoint::read_from_prefix(ep) else {
+                    return false;
+                };
+                (sm3_ep.major_version, sm3_ep.minor_version)
+            } else if ep.starts_with(b"_SM_") {
+                let Ok((sm_ep, _)) = SmbiosEntryPoint::read_from_prefix(ep) else {
+                    return false;
+                };
+                (sm_ep.major_version, sm_ep.minor_version)
+            } else {
+                return false;
+            };
+            cmp_maj_min(maj, min, 2, 4).is_ge()
+        })
+        .unwrap_or_else(|| false);
+
+    if is_smbios_atleast_24 {
+        if let Some(type0) = find_smbios_table_by_type::<SmbiosTableType0_24>(smbios, 0)? {
+            let table = type0.table();
+            chid_sources[CHID_SMBIOS_BIOS_VENDOR] =
+                str_from_maybe_u8(type0.get_string(table.vendor as usize));
+            chid_sources[CHID_SMBIOS_BIOS_VERSION] =
+                str_from_maybe_u8(type0.get_string(table.bios_version as usize));
+            // These are defined to be in lower-case hex with 2-digit zero padding
+            chid_sources[CHID_SMBIOS_BIOS_MAJOR] =
+                Some(format!("{:02x}", table.bios_major_release));
+            chid_sources[CHID_SMBIOS_BIOS_MINOR] =
+                Some(format!("{:02x}", table.bios_minor_release));
+        }
+    } else if let Some(type0) = find_smbios_table_by_type::<SmbiosTableType0>(smbios, 0)? {
+        let table = type0.table();
+        chid_sources[CHID_SMBIOS_BIOS_VENDOR] =
+            str_from_maybe_u8(type0.get_string(table.vendor as usize));
+        chid_sources[CHID_SMBIOS_BIOS_VERSION] =
+            str_from_maybe_u8(type0.get_string(table.bios_version as usize));
+    }
+
+    if let Some(type3) = find_smbios_table_by_type::<SmbiosTableType3>(smbios, 3)? {
+        // This is defined to be in lower-case hex with no padding
+        chid_sources[CHID_SMBIOS_ENCLOSURE_TYPE] = Some(format!("{:x}", type3.table().type_));
+    }
+
+    if let Some(edid) = edid {
+        let parsed_edid = ParsedEdid::parse(edid)?;
+        chid_sources[CHID_EDID_PANEL] = Some(parsed_edid.panel_id()?);
+    }
+
+    Ok(chid_sources)
+}
 
 pub fn compute_chid(srcs: &ChidSources, chid_type: usize) -> Option<crate::Guid> {
     let mut ctx = Sha1Ctx::new();
