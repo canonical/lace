@@ -360,11 +360,16 @@ def do_start(args):
     # Build and inject lace-stubble
     build_and_inject_stubble(args, config)
 
+    # Check for acpi disable on ARM64
+    acpi_flag = ""
+    if config["arch"] == "aarch64" and config.get("acpi") == "off":
+        acpi_flag = ",acpi=off"
+
     # Construct QEMU command
     qemu_cmd = [
         "qemu-system-" + config["arch"],
         "-machine",
-        f"{config['machine']},accel={best_vm_accel(config['arch'])}",
+        f"{config['machine']},accel={best_vm_accel(config['arch'])}{acpi_flag}",
         "-cpu",
         config["cpu"]["model"],
         "-smp",
