@@ -294,6 +294,22 @@ def build_and_inject_stubble(args, config):
     gfs.download(f"/boot/{kernel_name}", os.path.join(args.dir, "vmlinuz"))
     gfs.download(f"/boot/{initrd_name}", os.path.join(args.dir, "initrd.img"))
 
+    # On arm64 strip existing stubble layer from kernel using objcopy
+    if config["arch"] == "aarch64":
+        subprocess.run(
+            [
+                "aarch64-linux-gnu-objcopy",
+                "--dump-section",
+                ".linux=" + os.path.join(args.dir, "vmlinuz-really"),
+                os.path.join(args.dir, "vmlinuz"),
+                os.path.join(args.dir, "unused"),
+            ],
+            check=True,
+        )
+        shutil.move(
+            os.path.join(args.dir, "vmlinuz-really"), os.path.join(args.dir, "vmlinuz")
+        )
+
     # Create stubble EFI binary
     stubble_efi_path = os.path.join(
         "target", stubble_target, "debug", "lace-stubble.efi"
