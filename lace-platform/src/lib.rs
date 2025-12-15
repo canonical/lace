@@ -21,6 +21,10 @@ use efi as p;
 pub use p::Error;
 pub use p::debugln;
 
+pub mod dtb {
+    pub use super::p::dtb::{find_dtb, install_dtb};
+}
+
 pub mod linux {
     pub use super::p::linux::{BootLinuxError, boot_linux};
 }
