@@ -18,6 +18,8 @@ use core::cmp::Ordering;
 use core::fmt::{self, Debug, Display, Write};
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
+pub use fdt;
+
 pub fn find_byte_sequence(s: &[u8], sub: &[u8]) -> Option<usize> {
     if s.len() < sub.len() {
         return None;
