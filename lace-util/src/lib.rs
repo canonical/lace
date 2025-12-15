@@ -8,6 +8,7 @@ extern crate alloc;
 
 pub mod chid;
 pub mod chid_mapping;
+pub mod chid_matcher;
 pub mod edid;
 pub mod peimage;
 pub mod sha1;
