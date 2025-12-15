@@ -7,6 +7,8 @@
 
 extern crate alloc;
 
+use alloc::vec::Vec;
+
 // Platform implementations
 // TODO(mkukri): choose which platform we build and alias as 'p'
 // based on build target.
@@ -21,6 +23,7 @@ use efi as p;
 pub use p::Error;
 pub use p::debugln;
 pub use p::find_edid;
+pub use p::find_smbios_tables;
 
 pub mod dtb {
     pub use super::p::dtb::{find_dtb, install_dtb};
