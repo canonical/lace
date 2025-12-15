@@ -3,6 +3,8 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! UEFI platform abstractions.
 
+pub mod mem;
+
 /// Platform specific error type
 pub use uefi::Error;
 
