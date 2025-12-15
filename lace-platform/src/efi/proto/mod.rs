@@ -4,3 +4,4 @@
 //! Extra EFI protocol wrappers defined by Lace.
 
 pub mod dt_fixup;
+pub mod edid_discovered;
