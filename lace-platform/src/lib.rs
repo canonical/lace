@@ -1,31 +1,22 @@
 // SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only
 // Copyright (C) 2025, Canonical Ltd.
 // Authors: Mate Kukri <mate.kukri@canonical.com>
+//! Platform abstractions for Lace.
 
-use core::alloc::GlobalAlloc;
+#![no_std]
 
-#[allow(dead_code)]
-trait Platform: GlobalAlloc {
-    type Error;
-    type PhysicalAddress;
+extern crate alloc;
 
-    fn get_memory_map();
+// Platform implementations
+// TODO(mkukri): choose which platform we build and alias as 'p'
+// based on build target.
+pub mod efi;
+// pub mod ...;
 
-    fn allocate_pages(number_of_pages: usize) -> *mut u8;
+use efi as p;
+// use ... as p;
 
-    fn free_pages(ptr: *mut u8);
-
-    fn physical_address_to_pointer(address: Self::PhysicalAddress) -> *mut u8;
-
-    fn match_dtb(dtb: &[u8]) -> Result<bool, Self::Error>;
-
-    fn boot_linux(cfg: BootLinuxConfig) -> Result<(), Self::Error>;
-}
-
-#[allow(dead_code)]
-struct BootLinuxConfig<'kernel, 'initrd, 'dtb, 'cmdline> {
-    kernel: &'kernel [u8],
-    initrd: Option<&'initrd [u8]>,
-    dtb: Option<&'dtb [u8]>,
-    cmdline: &'cmdline [u8],
-}
+// Re-export portable APIs from the active platform at the top-level namespace.
+// The list of APIs exported here constitutes the portable Lace platform API.
+pub use p::Error;
+pub use p::debugln;
