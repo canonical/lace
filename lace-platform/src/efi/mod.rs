@@ -3,10 +3,14 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! UEFI platform abstractions.
 
+use core::ops::Deref;
+
 pub mod dtb;
 pub mod linux;
 pub mod mem;
 pub mod proto;
+
+use proto::edid_discovered::EdidDiscoveredProtocol;
 
 /// Platform specific error type
 pub use uefi::Error;
@@ -33,4 +37,22 @@ pub fn find_config_table<T>(guid: uefi::Guid) -> Option<*const T> {
         }
         None
     })
+}
+
+/// Opaque reference to EDID data obtained from the EDID Discovered Protocol.
+struct EdidRef(uefi::boot::ScopedProtocol<EdidDiscoveredProtocol>);
+
+impl Deref for EdidRef {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        self.0.edid_data()
+    }
+}
+
+/// Finds the first EDID Discovered Protocol instance and returns the EDID data attached to it.
+pub fn find_edid() -> Option<impl Deref<Target = [u8]>> {
+    open_protocol_exclusive::<EdidDiscoveredProtocol>()
+        .ok()
+        .map(EdidRef)
 }

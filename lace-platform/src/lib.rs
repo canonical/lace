@@ -20,6 +20,7 @@ use efi as p;
 // The list of APIs exported here constitutes the portable Lace platform API.
 pub use p::Error;
 pub use p::debugln;
+pub use p::find_edid;
 
 pub mod dtb {
     pub use super::p::dtb::{find_dtb, install_dtb};
