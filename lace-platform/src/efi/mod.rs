@@ -5,6 +5,7 @@
 
 pub mod linux;
 pub mod mem;
+pub mod proto;
 
 /// Platform specific error type
 pub use uefi::Error;
