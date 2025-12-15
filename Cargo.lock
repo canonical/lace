@@ -254,9 +254,9 @@ dependencies = [
 name = "lace-stubble"
 version = "0.1.0"
 dependencies = [
+ "lace-platform",
  "lace-util",
  "uefi",
- "uefi-raw",
 ]
 
 [[package]]
