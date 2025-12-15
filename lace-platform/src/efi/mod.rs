@@ -3,6 +3,7 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! UEFI platform abstractions.
 
+pub mod linux;
 pub mod mem;
 
 /// Platform specific error type

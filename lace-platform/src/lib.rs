@@ -20,3 +20,7 @@ use efi as p;
 // The list of APIs exported here constitutes the portable Lace platform API.
 pub use p::Error;
 pub use p::debugln;
+
+pub mod linux {
+    pub use super::p::linux::{BootLinuxError, boot_linux};
+}
