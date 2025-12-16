@@ -13,6 +13,7 @@ pub mod edid;
 pub mod peimage;
 pub mod sha1;
 pub mod smbios;
+pub mod units;
 
 use core::cmp::Ordering;
 use core::fmt::{self, Debug, Display, Write};
