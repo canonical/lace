@@ -239,7 +239,6 @@ Reference issues or specs as needed.
 - [ ] Tests added for new functionality
 - [ ] Tests pass
 - [ ] Commit messages follow conventions
-- [ ] Sign the [Canonical CLA](https://ubuntu.com/legal/contributors)
 
 ## Safety and Error Handling
 
@@ -268,7 +267,6 @@ Reference issues or specs as needed.
 - [Project Style Guide](STYLE.md)
 - [Contributing Guidelines](CONTRIBUTING.md)
 - [Canonical Rust Best Practices](https://canonical.github.io/rust-best-practices/cosmetic-discipline.html)
-- [Canonical CLA](https://ubuntu.com/legal/contributors)
 - Microsoft CHID Specification
 - RFC 9562 (UUID/GUID specification)
 - UEFI Specification
