@@ -107,10 +107,11 @@ All Lace code (excluding `ulib/`) uses dual licensing:
 # Run tests
 ./scripts/cargo_ci.py test --workspace --exclude lace-stubble --exclude fakeedid --exclude u-boot-sys
 
-# Test all board configurations
+# Only run these if you modified lace-boot:
+# Test all board configurations (lace-boot changes only)
 ./scripts/test-builds.sh
 
-# Build lace-boot for specific board
+# Build lace-boot for specific board (lace-boot changes only)
 make -C lace-boot config all BOARD=sandbox
 make -C lace-boot config all BOARD=efi-x86_app64
 ```
@@ -226,7 +227,8 @@ Reference issues or specs as needed.
 4. **Run formatters**: `./scripts/cargo_ci.py fmt --all`
 5. **Fix all clippy warnings**: `./scripts/cargo_ci.py clippy --workspace -- -D warnings`
 6. **Run tests**: `./scripts/cargo_ci.py test --workspace --exclude lace-stubble --exclude fakeedid --exclude u-boot-sys`
-7. **Commit with proper message format**
+7. **If you modified lace-boot**: Run `./scripts/test-builds.sh` or build specific boards with `make -C lace-boot config all BOARD=<board>`
+8. **Commit with proper message format**
 
 ### Before Submitting PR
 
