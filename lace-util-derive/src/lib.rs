@@ -17,14 +17,14 @@
 //! #[repr(u8)]
 //! enum Status {
 //!     #[name(short = "ok", long = "Success")]
-//!     Ok,
+//!     Ok = 1,
 //!     #[name(short = "fail", long = "Failure")]
-//!     Fail,
+//!     Fail = 2,
 //! }
 //!
 //! // NumEnum provides integer conversions
-//! assert_eq!(Status::try_from(0u8), std::result::Result::Ok(Status::Ok));
-//! assert_eq!(u8::from(Status::Fail), 1);
+//! assert_eq!(Status::try_from(1u8), std::result::Result::Ok(Status::Ok));
+//! assert_eq!(u8::from(Status::Fail), 2);
 //!
 //! // NamedEnum provides name accessors
 //! assert_eq!(Status::Ok.short_name(), "ok");
@@ -33,7 +33,6 @@
 //! ```
 
 use proc_macro::TokenStream;
-use proc_macro2::Span;
 use quote::quote;
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
@@ -67,9 +66,9 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields};
 /// #[derive(NumEnum, Debug, PartialEq)]
 /// #[repr(u8)]
 /// enum Color {
-///     Red,    // = 0
-///     Green,  // = 1
-///     Blue,   // = 2
+///     Red = 0,
+///     Green = 1,
+///     Blue = 2,
 /// }
 ///
 /// // Convert from integer to enum
@@ -92,13 +91,14 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields};
 /// #[derive(NumEnum, Debug, PartialEq)]
 /// #[repr(u16)]
 /// enum Level {
-///     Low,
-///     Medium,
-///     High,
+///     Low = 1,
+///     Medium = 5,
+///     High = 1024,
 /// }
 ///
-/// assert_eq!(Level::try_from(0u16), Ok(Level::Low));
-/// assert_eq!(u16::from(Level::Medium), 1);
+/// assert_eq!(Level::try_from(1u16), Ok(Level::Low));
+/// assert_eq!(u16::from(Level::Medium), 5);
+/// assert_eq!(u16::from(Level::High), 1024);
 /// ```
 ///
 /// # Panics
@@ -137,20 +137,34 @@ pub fn derive_num_enum(input: TokenStream) -> TokenStream {
         }
     }
 
+    // Collect variant names and discriminants
+    let variant_discriminants: Vec<_> = variants
+        .iter()
+        .map(|variant| {
+            let variant_name = &variant.ident;
+            let Some(discriminant) = variant.discriminant.as_ref().map(|(_, expr)| expr) else {
+                panic!(
+                    "Variant `{}` must have an explicit discriminant for NumEnum",
+                    variant_name
+                )
+            };
+            (variant_name, discriminant)
+        })
+        .collect();
+
     // Generate match arms for TryFrom<Int>, e.g. `0 => Ok(Color::Red),`
-    let try_from_arms = variants.iter().enumerate().map(|(idx, variant)| {
-        let variant_name = &variant.ident;
-        let idx_lit = syn::LitInt::new(&idx.to_string(), Span::call_site());
-        quote! {
-            #idx_lit => Ok(#name::#variant_name),
-        }
-    });
+    let try_from_arms = variant_discriminants
+        .iter()
+        .map(|(variant_name, discriminant)| {
+            quote! {
+                #discriminant => Ok(#name::#variant_name),
+            }
+        });
 
     // Generate impl TryFrom<u8> for Color { fn try_from(...) { match ... } }
     let try_from_impl = quote! {
         impl TryFrom<#repr_type> for #name {
             type Error = ();
-
             fn try_from(value: #repr_type) -> Result<Self, Self::Error> {
                 match value {
                     #(#try_from_arms)*
@@ -161,13 +175,13 @@ pub fn derive_num_enum(input: TokenStream) -> TokenStream {
     };
 
     // Generate From<Enum> for Int implementation
-    let from_arms = variants.iter().enumerate().map(|(idx, variant)| {
-        let variant_name = &variant.ident;
-        let idx_lit = syn::LitInt::new(&idx.to_string(), Span::call_site());
-        quote! {
-            #name::#variant_name => #idx_lit,
-        }
-    });
+    let from_arms = variant_discriminants
+        .iter()
+        .map(|(variant_name, discriminant)| {
+            quote! {
+                #name::#variant_name => #discriminant,
+            }
+        });
 
     // Generate impl From<Color> for u8 { fn from(...) { match ... } }
     let from_impl = quote! {
