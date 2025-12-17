@@ -65,7 +65,7 @@ The hooks will run automatically on `git commit` and include:
 - Code formatting checks (`cargo fmt`)
 - Compilation checks (`cargo check`)
 - Lint checks (`cargo clippy`)
-- Unit tests (`cargo test`)
+- Unit tests (`cargo test` on most workspace crates)
 - General file checks (trailing whitespace, YAML/TOML syntax, etc.)
 
 **Before committing**, you can run the hooks manually to catch issues early:
