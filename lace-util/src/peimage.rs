@@ -99,7 +99,10 @@ pub struct OptionalHeader64 {
     pub size_of_heap_commit: u64,
     pub loader_flags: u32,
     pub number_of_rva_and_sizes: u32,
-    pub data_directory: [DataDirectory; NUMBER_OF_DIRECTORY_ENTRIES],
+    // This struct in reality has a flexible length array here,
+    // the length is given by 'number_of_rva_and_sizes'.
+    // We are not using it for now, so we omit it.
+    // pub data_directory: [DataDirectory; NUMBER_OF_DIRECTORY_ENTRIES],
 }
 
 #[repr(C)]
