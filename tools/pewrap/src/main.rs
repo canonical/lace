@@ -115,6 +115,15 @@ fn main() {
                 process::exit(1);
             }
         };
+        
+        // Validate DTB files using the fdt crate
+        if *name == ".dtbauto" {
+            if let Err(e) = fdt::Fdt::new(&d) {
+                eprintln!("{}: invalid device tree blob: {}", path.display(), e);
+                process::exit(1);
+            }
+        }
+        
         bld.add_section(name, d, SCN_CNT_INITIALIZED_DATA | SCN_MEM_READ);
     }
 
