@@ -224,7 +224,7 @@ Reference issues or specs as needed.
 5. **If you modified lace-boot**: Run `./scripts/test-builds.sh` or build specific boards with `make -C lace-boot config all BOARD=<board>`
 6. **Commit with proper message format**
 
-**Note**: Pre-commit hooks are configured in `.pre-commit-config.yaml` and run automatically on `git commit` if installed. They include cargo fmt, cargo check, cargo clippy, cargo test, and file quality checks. Always run `pre-commit run --all-files` before using **report_progress** to ensure all checks pass.
+**Note**: Pre-commit hooks are configured in `.pre-commit-config.yaml` and run automatically on `git commit` if installed. They include cargo fmt, cargo check, cargo clippy, cargo test, and file quality checks. Always run `pre-commit run --all-files` before using **report_progress** (an internal progress-reporting command used in some automated workflows) to ensure all checks pass; if you do not use that workflow, you can ignore this part of the note.
 
 ### Before Submitting PR
 
