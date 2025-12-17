@@ -33,6 +33,7 @@
 //! ```
 
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::quote;
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
@@ -53,8 +54,9 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields};
 ///
 /// - `impl TryFrom<Int> for Enum`: Converts an integer to an enum variant.
 ///   Returns `Err(())` if the integer doesn't correspond to a valid variant.
+///   Generated for: u8, u16, u32, u64, usize, i8, i16, i32, i64, isize.
 /// - `impl From<Enum> for Int`: Converts an enum variant to its corresponding
-///   integer value.
+///   integer value (for the repr type only).
 ///
 /// # Examples
 ///
@@ -99,6 +101,27 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields};
 /// assert_eq!(Level::try_from(1u16), Ok(Level::Low));
 /// assert_eq!(u16::from(Level::Medium), 5);
 /// assert_eq!(u16::from(Level::High), 1024);
+/// ```
+///
+/// ## Converting from arbitrary integer types
+///
+/// ```
+/// use lace_util_derive::NumEnum;
+///
+/// #[derive(NumEnum, Debug, PartialEq)]
+/// #[repr(u8)]
+/// enum Color {
+///     Red = 0,
+///     Green = 1,
+///     Blue = 2,
+/// }
+///
+/// // TryFrom is implemented for all integer types
+/// assert_eq!(Color::try_from(0u32), Ok(Color::Red));
+/// assert_eq!(Color::try_from(1i64), Ok(Color::Green));
+/// assert_eq!(Color::try_from(2usize), Ok(Color::Blue));
+/// assert_eq!(Color::try_from(256u32), Err(()));  // Out of u8 range
+/// assert_eq!(Color::try_from(-1i32), Err(()));   // Negative value
 /// ```
 ///
 /// # Panics
@@ -161,8 +184,8 @@ pub fn derive_num_enum(input: TokenStream) -> TokenStream {
             }
         });
 
-    // Generate impl TryFrom<u8> for Color { fn try_from(...) { match ... } }
-    let try_from_impl = quote! {
+    // Generate impl TryFrom<repr_type> for Enum with direct match
+    let try_from_repr_impl = quote! {
         impl TryFrom<#repr_type> for #name {
             type Error = ();
             fn try_from(value: #repr_type) -> Result<Self, Self::Error> {
@@ -173,6 +196,29 @@ pub fn derive_num_enum(input: TokenStream) -> TokenStream {
             }
         }
     };
+
+    // Generate TryFrom for other integer types that delegate to the repr impl
+    let repr_str = repr_type.to_string();
+    let other_int_types: Vec<syn::Ident> = [
+        "u8", "u16", "u32", "u64", "usize", "i8", "i16", "i32", "i64", "isize",
+    ]
+    .iter()
+    .filter(|t| **t != repr_str)
+    .map(|t| syn::Ident::new(t, Span::call_site()))
+    .collect();
+
+    let other_try_from_impls = other_int_types.iter().map(|int_type| {
+        quote! {
+            impl TryFrom<#int_type> for #name {
+                type Error = ();
+
+                fn try_from(value: #int_type) -> Result<Self, Self::Error> {
+                    let repr_val = #repr_type::try_from(value).map_err(|_| ())?;
+                    Self::try_from(repr_val)
+                }
+            }
+        }
+    });
 
     // Generate From<Enum> for Int implementation
     let from_arms = variant_discriminants
@@ -196,7 +242,8 @@ pub fn derive_num_enum(input: TokenStream) -> TokenStream {
 
     // Combine implementations
     let expanded = quote! {
-        #try_from_impl
+        #try_from_repr_impl
+        #(#other_try_from_impls)*
         #from_impl
     };
 
