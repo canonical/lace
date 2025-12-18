@@ -84,7 +84,15 @@ fn main() -> uefi::Status {
                     continue;
                 }
             };
-            if dtb_fdt.root().compatible().first() == compatible {
+            let Some(dtb_compatible) = dtb_fdt
+                .find_node("/")
+                .and_then(|n| n.compatible())
+                .and_then(|compatible| compatible.all().next())
+            else {
+                uefi::println!("Skipping .dtbauto section with no compatible property");
+                continue;
+            };
+            if dtb_compatible == compatible {
                 uefi::println!("Installing DTB for compatible {}", compatible);
                 installed_dtb =
                     unsafe { Some(install_dtb(dtb_data).expect("failed to install DTB")) };

@@ -8,6 +8,7 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
+use lace_util::fdt::node::FdtNode;
 
 // Platform implementations
 // TODO(mkukri): choose which platform we build and alias as 'p'
@@ -38,7 +39,10 @@ pub mod linux {
 /// This function is unsafe because the compatible string references the firmware DTB,
 /// which may be invalidated by other code replacing it.
 pub unsafe fn platform_compatible_using_firmware_dtb() -> Option<&'static str> {
-    unsafe { dtb::find_dtb() }.map(|dtb| dtb.root().compatible().first())
+    let dtb = unsafe { dtb::find_dtb() }?;
+    dtb.find_node("/")
+        .and_then(FdtNode::compatible)
+        .and_then(|compatible| compatible.all().next())
 }
 
 /// Determine platform compatibility using CHID mappings and sources.
