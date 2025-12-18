@@ -2,6 +2,7 @@
 // Copyright (C) 2025, Canonical Ltd.
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 
+use crate::align_up;
 use core::{fmt::Display, mem::offset_of};
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
@@ -171,52 +172,58 @@ pub struct VirtualSectionIterator<'a> {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum PeParseError {
+pub enum PeError {
     Truncated,
     BadHeader,
+    RelocationsNotYetSupported,
 }
 
-impl Display for PeParseError {
+impl Display for PeError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::Truncated => write!(f, "image truncated"),
             Self::BadHeader => write!(f, "image has bad header"),
+            Self::RelocationsNotYetSupported => {
+                write!(f, "image has relocations, which are not yet supported")
+            }
         }
     }
 }
 
-pub fn parse_pe<'a>(s: &'a [u8]) -> Result<PeRef<'a>, PeParseError> {
+pub fn parse_pe<'a>(s: &'a [u8]) -> Result<PeRef<'a>, PeError> {
     // Get and validate the DOS header
-    let (dos_hdr, dos_data) =
-        DosHeader::read_from_prefix(s).map_err(|_| PeParseError::Truncated)?;
+    let (dos_hdr, dos_data) = DosHeader::read_from_prefix(s).map_err(|_| PeError::Truncated)?;
     if dos_hdr.e_magic != DOS_SIGNATURE {
-        return Err(PeParseError::BadHeader);
+        return Err(PeError::BadHeader);
     }
 
     // Get and validate the 64-bit NT headers
     let (nt_hdrs, nt_data) = s
         .get(dos_hdr.e_lfanew as usize..)
         .and_then(|s| NtHeaders64::read_from_prefix(s).ok())
-        .ok_or(PeParseError::Truncated)?;
+        .ok_or(PeError::Truncated)?;
     if nt_hdrs.signature != NT_SIGNATURE {
-        return Err(PeParseError::BadHeader);
+        return Err(PeError::BadHeader);
     }
     if (nt_hdrs.file_header.size_of_optional_header as usize) < size_of::<OptionalHeader64>() {
-        return Err(PeParseError::Truncated);
+        return Err(PeError::Truncated);
     }
     if nt_hdrs.optional_header.magic != NT_OPTIONAL_HDR64_MAGIC {
-        return Err(PeParseError::BadHeader);
+        return Err(PeError::BadHeader);
     }
 
     // Get the section headers as a slice
-    let sect_hdrs_size = (nt_hdrs.file_header.number_of_sections as usize)
-        .checked_mul(size_of::<SectionHeader>())
-        .ok_or(PeParseError::Truncated)?;
-    let sect_hdrs = (dos_hdr.e_lfanew as usize)
+    let sect_hdrs_start = (dos_hdr.e_lfanew as usize)
         .checked_add(offset_of!(NtHeaders64, optional_header))
         .and_then(|x| x.checked_add(nt_hdrs.file_header.size_of_optional_header as usize))
-        .and_then(|x| s.get(x..x + sect_hdrs_size))
-        .ok_or(PeParseError::Truncated)?;
+        .ok_or(PeError::Truncated)?;
+    let sect_hdrs_end = (nt_hdrs.file_header.number_of_sections as usize)
+        .checked_mul(size_of::<SectionHeader>())
+        .and_then(|size| sect_hdrs_start.checked_add(size))
+        .ok_or(PeError::Truncated)?;
+    let sect_hdrs = s
+        .get(sect_hdrs_start..sect_hdrs_end)
+        .ok_or(PeError::Truncated)?;
 
     let dos_data = &dos_data[..dos_hdr.e_lfanew as usize - size_of::<DosHeader>()];
     let nt_data = &nt_data
@@ -263,10 +270,64 @@ impl<'a> PeRef<'a> {
             index: 0,
         }
     }
+
+    /// Relocates the PE image into the provided memory slice.
+    /// The slice must be at least as large as the image size specified
+    /// in the optional header.
+    pub fn relocate_into(&self, pages: &mut [u8]) -> Result<(), PeError> {
+        let opt_hdr = &self.nt_hdrs.optional_header;
+
+        // Copy headers to the allocated memory
+        let hdrs_src = self
+            .data
+            .get(..opt_hdr.size_of_headers as usize)
+            .ok_or(PeError::Truncated)?;
+        pages
+            .get_mut(..opt_hdr.size_of_headers as usize)
+            .ok_or(PeError::Truncated)?
+            .copy_from_slice(hdrs_src);
+
+        // Copy sections to the allocated memory
+        for result in self.raw_sections() {
+            let (shdr, data) = result?;
+            if shdr.pointer_to_relocations != 0 {
+                return Err(PeError::RelocationsNotYetSupported);
+            }
+
+            // Virtual size must be aligned to section alignment, the linker is not required to align this for us.
+            let virt_size = align_up!(
+                shdr.virtual_size,
+                self.nt_hdrs.optional_header.section_alignment
+            ) as usize;
+            if data.len() > virt_size {
+                return Err(PeError::Truncated);
+            }
+            let virt_start = shdr.virtual_address as usize;
+            let virt_end = virt_start
+                .checked_add(virt_size)
+                .ok_or(PeError::Truncated)?;
+
+            // Copy initialized data
+            pages
+                .get_mut(virt_start..virt_start + data.len())
+                .ok_or(PeError::Truncated)?
+                .copy_from_slice(data);
+
+            // Zero uninitialized data
+            if data.len() < virt_size {
+                pages
+                    .get_mut((virt_start + data.len())..virt_end)
+                    .ok_or(PeError::Truncated)?
+                    .fill(0);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl<'a> Iterator for RawSectionIterator<'a> {
-    type Item = Result<(SectionHeader, &'a [u8]), PeParseError>;
+    type Item = Result<(SectionHeader, &'a [u8]), PeError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let shdr = self.pe.nth_section(self.index)?;
@@ -279,13 +340,13 @@ impl<'a> Iterator for RawSectionIterator<'a> {
                     .data
                     .get(shdr.pointer_to_raw_data as usize..end_of_raw_data)
                     .map(|data| Ok((shdr, data)))
-                    .or(Some(Err(PeParseError::Truncated)))
+                    .or(Some(Err(PeError::Truncated)))
             })
     }
 }
 
 impl<'a> Iterator for VirtualSectionIterator<'a> {
-    type Item = Result<(SectionHeader, &'a [u8]), PeParseError>;
+    type Item = Result<(SectionHeader, &'a [u8]), PeError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let shdr = self.pe.nth_section(self.index)?;
@@ -298,7 +359,7 @@ impl<'a> Iterator for VirtualSectionIterator<'a> {
                     .data
                     .get(shdr.virtual_address as usize..end_of_virtual_section)
                     .map(|data| Ok((shdr, data)))
-                    .or(Some(Err(PeParseError::Truncated)))
+                    .or(Some(Err(PeError::Truncated)))
             })
     }
 }

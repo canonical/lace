@@ -341,7 +341,7 @@ impl Display for PeRebuildError {
 }
 
 impl<'s> PeRebuilder<'s> {
-    fn from_ref(r: &PeRef<'s>) -> Result<Self, PeParseError> {
+    fn from_ref(r: &PeRef<'s>) -> Result<Self, PeError> {
         let mut sections = Vec::new();
         for result in r.raw_sections() {
             let (shdr, data) = result?;
