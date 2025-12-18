@@ -3,6 +3,7 @@
 resolver = "2"
 members = [
     "lace-platform",
+    "lace-speedboot",
     "lace-stubble",
     "lace-util",
     "lace-util-derive",
