@@ -109,6 +109,7 @@ exceptions = [
     { allow = ["GPL-2.0-only"], crate = "pewrap" },
     { allow = ["GPL-2.0-only"], crate = "fakeedid" },
     { allow = ["GPL-2.0-only"], crate = "collect-hwids" },
+    { allow = ["GPL-2.0-only"], crate = "lace-speedboot" },
     { allow = ["GPL-2.0-only"], crate = "lace-stubble" },
     { allow = ["GPL-2.0-only"], crate = "lace-platform" },
     { allow = ["GPL-2.0-only"], crate = "lace-util" },

@@ -5,15 +5,17 @@
 
 import argparse
 import copy
+import guestfs
 import json
 import os
+import pefile
 import platform
+import requests
 import shutil
+import struct
 import subprocess
 import time
-import guestfs
-import pefile
-import requests
+import uuid
 
 # Enable DEBUG mode
 DEBUG = False
@@ -62,6 +64,8 @@ VM_DEFAULTS = {
 
 # EFI system partition type GUID
 EFI_SYSTEM_PARTITION_TYPE_GUID = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
+# BIOS Boot Partition type GUID
+BIOS_BOOT_PARTITION_TYPE_GUID = "21686148-6449-6E6F-744E-656564454649"
 
 # Cloud-init user-data template
 CI_USER_DATA = """#cloud-config
@@ -75,6 +79,82 @@ EFI_SUFFIXES = {
     "x86_64": "X64.EFI",
     "aarch64": "AA64.EFI",
 }
+
+
+class GPTPartition:
+    def __init__(self, type_guid, unique_guid, first_lba, last_lba, attributes, name):
+        self.type_guid = type_guid
+        self.unique_guid = unique_guid
+        self.first_lba = first_lba
+        self.last_lba = last_lba
+        self.attributes = attributes
+        self.name = name
+
+    @classmethod
+    def decode(cls, entry_bytes):
+        if len(entry_bytes) < 128:
+            raise ValueError("Partition entry must be at least 128 bytes")
+
+        type_guid_bytes = entry_bytes[:16]
+        if type_guid_bytes == b'\x00' * 16:
+            return None
+
+        unique_guid_bytes = entry_bytes[16:32]
+        first_lba = struct.unpack_from("<Q", entry_bytes, 32)[0]
+        last_lba = struct.unpack_from("<Q", entry_bytes, 40)[0]
+        attributes = struct.unpack_from("<Q", entry_bytes, 48)[0]
+        name_bytes = entry_bytes[56:128]
+
+        # Decode name (UTF-16LE, null-terminated)
+        name = name_bytes.decode('utf-16-le').split('\x00')[0]
+
+        type_guid = uuid.UUID(bytes_le=type_guid_bytes)
+        unique_guid = uuid.UUID(bytes_le=unique_guid_bytes)
+
+        return cls(type_guid, unique_guid, first_lba, last_lba, attributes, name)
+
+    def __repr__(self):
+        return f"<GPTPartition type={self.type_guid} start={self.first_lba} end={self.last_lba} name='{self.name}'>"
+
+
+class GPT:
+    def __init__(self, file_obj):
+        self.file_obj = file_obj
+        self.partitions = []
+        self.sector_size = 512
+
+    def read(self):
+        self.partitions = []
+        # Read GPT Header (LBA 1)
+        self.file_obj.seek(self.sector_size)
+        header = self.file_obj.read(self.sector_size)
+
+        if len(header) < self.sector_size or header[:8] != b"EFI PART":
+            raise ValueError("Invalid GPT signature")
+
+        # Parse Header
+        part_entry_lba = struct.unpack_from("<Q", header, 72)[0]
+        num_part_entries = struct.unpack_from("<I", header, 80)[0]
+        part_entry_size = struct.unpack_from("<I", header, 84)[0]
+
+        # Read Partition Entries
+        self.file_obj.seek(part_entry_lba * self.sector_size)
+        entries_data = self.file_obj.read(num_part_entries * part_entry_size)
+
+        for i in range(num_part_entries):
+            entry_offset = i * part_entry_size
+            entry = entries_data[entry_offset : entry_offset + part_entry_size]
+
+            part = GPTPartition.decode(entry)
+            if part:
+                self.partitions.append(part)
+
+    def find_partition_by_type(self, type_guid_str):
+        target_uuid = uuid.UUID(type_guid_str)
+        for part in self.partitions:
+            if part.type_guid == target_uuid:
+                return part
+        return None
 
 
 def default_vm_dir():
@@ -176,16 +256,38 @@ def create_disk_image(args):
     # Create GPT partition table and partitions
     device = gfs.list_devices()[0]
     gfs.part_init(device, "gpt")
-    gfs.part_add(device, "p", 2048, 2048 + (512 * MIB // SECTOR_SIZE) - 1)  # ESP
-    gfs.part_set_gpt_type(device, 1, EFI_SYSTEM_PARTITION_TYPE_GUID)
-    gfs.part_add(
-        device, "p", 2048 + (512 * MIB // SECTOR_SIZE), -2048
-    )  # Root partition
+
+    current_sector = 2048
+
+    # Add BIOS Boot Partition for x86_64
+    if args.arch == "x86_64":
+        bios_boot_size_sectors = 1 * MIB // SECTOR_SIZE  # 1MB
+        gfs.part_add(
+            device, "p", current_sector, current_sector + bios_boot_size_sectors - 1
+        )
+        gfs.part_set_gpt_type(device, 1, BIOS_BOOT_PARTITION_TYPE_GUID)
+        current_sector += bios_boot_size_sectors
+
+    # ESP
+    esp_size_sectors = 512 * MIB // SECTOR_SIZE
+    gfs.part_add(device, "p", current_sector, current_sector + esp_size_sectors - 1)
+    # Note: Partition index depends on whether we added BIOS boot partition
+    esp_part_idx = 2 if args.arch == "x86_64" else 1
+    gfs.part_set_gpt_type(device, esp_part_idx, EFI_SYSTEM_PARTITION_TYPE_GUID)
+    current_sector += esp_size_sectors
+
+    # Root partition
+    gfs.part_add(device, "p", current_sector, -2048)
 
     # Format filesystems
     partitions = list(filter(lambda s: s.startswith(device), gfs.list_partitions()))
-    esp_partition = partitions[0]
-    root_partition = partitions[1]
+    if args.arch == "x86_64":
+        esp_partition = partitions[1]
+        root_partition = partitions[2]
+    else:
+        esp_partition = partitions[0]
+        root_partition = partitions[1]
+
     gfs.mkfs("vfat", esp_partition)
     gfs.mkfs(args.root_fs_type, root_partition)
     gfs.set_label(root_partition, "cloudimg-rootfs")
@@ -362,6 +464,187 @@ def build_and_inject_stubble(args, config):
     gfs.close()
 
 
+def build_and_inject_speedboot(args, config):
+    """Replace BOOT{EFI_SUFFIXES[config['arch']]}.efi with lace-speedboot"""
+
+    print("Building lace-speedboot...")
+    subprocess.run(
+        [
+            "cargo",
+            "build",
+            "-p",
+            "lace-speedboot",
+            "--no-default-features",
+            "--features",
+            "efi",
+            "--target",
+            f"{config['arch']}-unknown-uefi",
+        ],
+        check=True,
+    )
+
+    speedboot_path = f"target/{config['arch']}-unknown-uefi/debug/lace-speedboot.efi"
+    if not os.path.exists(speedboot_path):
+        raise RuntimeError(f"Build failed: {speedboot_path} not found")
+
+    print(f"Built: {speedboot_path}")
+
+    print("Injecting lace-speedboot into disk image...")
+    disk_image_path = os.path.join(args.dir, "disk.img")
+    gfs = guestfs.GuestFS(python_return_dict=True)
+    gfs.add_drive_opts(disk_image_path, format="raw", readonly=0)
+    gfs.launch()
+
+    # Find and mount partitions
+    roots = gfs.inspect_os()
+    if not roots:
+        raise RuntimeError("No OS found in disk")
+
+    mps = gfs.inspect_get_mountpoints(roots[0])
+    for mount_point, device in sorted(mps.items(), key=lambda k: len(k[0])):
+        gfs.mount(device, mount_point)
+
+    # Copy EFI binary to ESP
+    gfs.mkdir_p("/boot/efi/EFI/BOOT")
+    gfs.upload(speedboot_path, f"/boot/efi/EFI/BOOT/BOOT{EFI_SUFFIXES[config['arch']]}")
+
+    # List grub configs for debugging
+    print("\nGRUB configs found:")
+    for grub_cfg in ["/boot/grub/grub.cfg", "/boot/efi/EFI/ubuntu/grub.cfg"]:
+        if gfs.exists(grub_cfg):
+            print(f"  {grub_cfg}")
+
+    gfs.umount_all()
+    gfs.shutdown()
+    gfs.close()
+
+    print("Injection complete")
+
+
+def build_and_inject_bios(args, config, package):
+    """Build and inject a BIOS payload (lace-speedboot)"""
+
+    if config["arch"] != "x86_64":
+        raise ValueError(f"{package} only supports x86_64 on BIOS")
+
+    print(f"Building {package} for BIOS...")
+    # 1. Build BIOS stages
+    subprocess.run(["make", "-C", "lace-platform/src/bios/boot/"], check=True)
+
+    # 2. Build Core
+    cargo_cmd = [
+        "cargo",
+        "build",
+        "-p",
+        package,
+        "--no-default-features",
+        "--features",
+        "bios",
+        "--target",
+        "lace-platform/src/bios/x86_64-bios.json",
+        "-Z", "json-target-spec",
+        "-Z",
+        "build-std=core,alloc,compiler_builtins",
+        "-Z",
+        "build-std-features=compiler-builtins-mem",
+        "--release",
+    ]
+
+    subprocess.run(cargo_cmd, check=True)
+
+    stage1_bin = "lace-platform/src/bios/boot/stage1.bin"
+    stage2_bin = "lace-platform/src/bios/boot/stage2.bin"
+    core_bin = f"target/x86_64-bios/release/{package}"
+    disk_img = os.path.join(args.dir, "disk.img")
+
+    if not os.path.exists(disk_img):
+        raise RuntimeError(f"{disk_img} not found")
+
+    try:
+        with open(disk_img, "r+b") as disk_f:
+            # 3. Write Stage 1 to LBA 0
+            print(f"Writing {stage1_bin} to {disk_img} (LBA 0)")
+            try:
+                with open(stage1_bin, "rb") as f:
+                    stage1_data = f.read()
+
+                if len(stage1_data) > 440:
+                    raise RuntimeError(
+                        f"Stage 1 binary size ({len(stage1_data)} bytes) exceeds 440 bytes."
+                    )
+
+                disk_f.seek(0)
+                disk_f.write(stage1_data)
+            except FileNotFoundError:
+                raise RuntimeError(f"Could not read {stage1_bin}")
+
+            # 4. Find BIOS Boot Partition using GPT class
+            print("Parsing GPT...")
+            try:
+                gpt = GPT(disk_f)
+                gpt.read()
+            except Exception as e:
+                raise RuntimeError(f"Error parsing GPT: {e}")
+
+            partition = gpt.find_partition_by_type(BIOS_BOOT_PARTITION_TYPE_GUID)
+
+            if partition is None:
+                raise RuntimeError(
+                    f"BIOS boot partition (GUID {BIOS_BOOT_PARTITION_TYPE_GUID}) not found."
+                )
+
+            target_offset = partition.first_lba * 512
+            print(f"Found BIOS boot partition: {partition}")
+            print(f"Target offset: {target_offset}")
+
+            # 5. Write Stage 2 + Core to BIOS Boot Partition
+            print(
+                f"Writing {stage2_bin} + {core_bin} to {disk_img} (Offset {target_offset})"
+            )
+            try:
+                with open(core_bin, "rb") as f:
+                    core_data = f.read()
+
+                core_size = len(core_data)
+                print(f"Core size: {core_size} bytes")
+
+                with open(stage2_bin, "rb") as f:
+                    stage2_data = bytearray(f.read())
+
+                # Patch core size at offset 8 (Little Endian 32-bit integer)
+                if len(stage2_data) >= 12:
+                    struct.pack_into("<I", stage2_data, 8, core_size)
+                    print(f"Patched Stage 2 with Core size: {core_size}")
+                else:
+                    print("Warning: Stage 2 binary too small to patch size.")
+
+                # Pad Stage 2 to 2KB (4 sectors)
+                if len(stage2_data) > 2048:
+                    raise RuntimeError(
+                        f"Stage 2 binary size ({len(stage2_data)} bytes) exceeds 2KB."
+                    )
+
+                stage2_padded = stage2_data + b"\x00" * (2048 - len(stage2_data))
+
+                combined_data = stage2_padded + core_data
+                combined_size = len(combined_data)
+                partition_size = (partition.last_lba - partition.first_lba + 1) * 512
+
+                if combined_size > partition_size:
+                    raise RuntimeError(
+                        f"Combined binary size ({combined_size} bytes) exceeds partition size ({partition_size} bytes)."
+                    )
+
+                disk_f.seek(target_offset)
+                disk_f.write(combined_data)
+            except FileNotFoundError:
+                raise RuntimeError("Could not read binaries")
+    except IOError as e:
+        raise RuntimeError(f"Error opening {disk_img}: {e}")
+
+    print("Injection complete")
+
+
 def do_start(args):
     """Handler for the 'start' command"""
 
@@ -372,7 +655,15 @@ def do_start(args):
         config = json.load(config_file)
 
     # Build and inject lace-stubble
-    build_and_inject_stubble(args, config)
+    match args.app:
+        case "stubble":
+            build_and_inject_stubble(args, config)
+        case "speedboot":
+            build_and_inject_speedboot(args, config)
+        case "speedboot-bios":
+            build_and_inject_bios(args, config, package="lace-speedboot")
+        case _:
+            raise ValueError(f"Unknown app: {args.app}")
 
     # Start swtpm if requested
     swtpm_proc = None
@@ -432,18 +723,33 @@ def do_start(args):
             f"cores={config['cpu']['cores']}",
             "-m",
             config["ram"],
-            "-drive",
-            "if=pflash,unit=0,format=raw,readonly=on,file="
-            + os.path.join(args.dir, config["fw"]["code"]),
-            "-drive",
-            "if=pflash,unit=1,format=raw,file="
-            + os.path.join(args.dir, config["fw"]["vars"]),
-            "-drive",
-            f"if=none,id=disk,format={config['disk']['format']},file="
-            + os.path.join(args.dir, config["disk"]["file"]),
-            "-device",
-            "virtio-blk-pci,drive=disk,bootindex=1",
         ]
+
+        if args.app in ["speedboot-bios"]:
+            # Legacy BIOS boot
+            qemu_cmd.extend(
+                [
+                    "-drive",
+                    f"if=virtio,file={os.path.join(args.dir, config['disk']['file'])},format={config['disk']['format']}",
+                ]
+            )
+        else:
+            # UEFI boot
+            qemu_cmd.extend(
+                [
+                    "-drive",
+                    "if=pflash,unit=0,format=raw,readonly=on,file="
+                    + os.path.join(args.dir, config["fw"]["code"]),
+                    "-drive",
+                    "if=pflash,unit=1,format=raw,file="
+                    + os.path.join(args.dir, config["fw"]["vars"]),
+                    "-drive",
+                    f"if=none,id=disk,format={config['disk']['format']},file="
+                    + os.path.join(args.dir, config["disk"]["file"]),
+                    "-device",
+                    "virtio-blk-pci,drive=disk,bootindex=1",
+                ]
+            )
 
         # Add TPM if requested
         if config.get("tpm"):
@@ -534,7 +840,6 @@ def do_start(args):
             swtpm_proc.terminate()
             swtpm_proc.wait()
 
-
 def main():
     """Main function to parse arguments and execute commands"""
 
@@ -561,7 +866,10 @@ def main():
         help="Filesystem type for root partition",
     )
 
-    cmds.add_parser("start", help="Start the VM")
+    start_cmd = cmds.add_parser("start", help="Start the VM")
+    start_cmd.add_argument(
+        "--app", type=str, default="stubble", help="App to run (stubble, speedboot, speedboot-bios)"
+    )
 
     args = parser.parse_args()
 

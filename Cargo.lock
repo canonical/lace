@@ -276,6 +276,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "lace-speedboot"
+version = "0.1.0"
+dependencies = [
+ "lace-platform",
+ "lace-stubble",
+ "lace-util",
+]
+
+[[package]]
 name = "lace-stubble"
 version = "0.1.0"
 dependencies = [
