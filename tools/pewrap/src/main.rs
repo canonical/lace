@@ -117,8 +117,29 @@ fn main() {
         };
 
         // Section specific checks
-        #[allow(clippy::single_match)]
         match *name {
+            ".linux" => {
+                // Validate Linux kernel PE
+                match lace_util::peimage::parse_pe(&d) {
+                    Ok(pe) => {
+                        // Check for LoadFile2 initrd support
+                        if pe.nt_hdrs.optional_header.major_image_version < 1 {
+                            eprintln!(
+                                "{}: Linux kernel PE image does not support LoadFile2 initrd",
+                                path.display()
+                            );
+                            process::exit(1);
+                        }
+
+                        // Set stubble PE major version to 1 to indicate LoadFile2 initrd support
+                        bld.nt_hdrs.optional_header.major_image_version = 1;
+                    }
+                    Err(e) => {
+                        eprintln!("{}: invalid Linux kernel PE image: {}", path.display(), e);
+                        process::exit(1);
+                    }
+                }
+            }
             ".dtbauto" => {
                 // Validate DTB files using the fdt crate
                 if let Err(e) = fdt::Fdt::new(&d) {
