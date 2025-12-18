@@ -8,6 +8,7 @@ use core::ops::Deref;
 use lace_util::smbios::{Smbios3EntryPoint, SmbiosEntryPoint};
 
 pub mod dtb;
+pub mod image;
 pub mod linux;
 pub mod mem;
 pub mod proto;

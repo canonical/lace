@@ -3,16 +3,16 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! Linux bootloader support.
 
+use super::image::{LaceLoadImageError, LaceLoadedImage};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use core::{ffi::c_void, fmt::Display};
 
 #[derive(Debug)]
 pub enum BootLinuxError {
-    LoadKernelError(uefi::Error),
+    LoadKernelError(LaceLoadImageError),
     LoadInitrdError(uefi::Error),
     CmdlineUtf8Error,
-    StartKernelError(uefi::Error),
 }
 
 impl Display for BootLinuxError {
@@ -21,31 +21,18 @@ impl Display for BootLinuxError {
             BootLinuxError::LoadKernelError(e) => write!(f, "failed to load kernel image: {}", e),
             BootLinuxError::LoadInitrdError(e) => write!(f, "failed to load initrd image: {}", e),
             BootLinuxError::CmdlineUtf8Error => write!(f, "command line is not valid UTF-8"),
-            BootLinuxError::StartKernelError(e) => write!(f, "failed to start kernel image: {}", e),
         }
     }
 }
 
+/// Boots a Linux kernel given in PE format, with optional initrd and command line.
+/// Note that this function does not perform any signature verification of the kernel or initrd,
+/// the caller is responsible for ensuring their authenticity.
 pub fn boot_linux(
     kernel: &[u8],
     initrd: Option<&[u8]>,
     cmdline: Option<&[u8]>,
 ) -> Result<(), BootLinuxError> {
-    // Load kernel image
-    // TODO(mkukri): verification should be done via shim instead.
-    let handle = uefi::boot::load_image(
-        uefi::boot::image_handle(),
-        uefi::boot::LoadImageSource::FromBuffer {
-            buffer: kernel,
-            file_path: None,
-        },
-    )
-    .map_err(BootLinuxError::LoadKernelError)?;
-    // Locate kernel loaded image protocol
-    let mut li =
-        uefi::boot::open_protocol_exclusive::<uefi::proto::loaded_image::LoadedImage>(handle)
-            .map_err(BootLinuxError::LoadKernelError)?;
-
     // Load initrd (this will create a handle with a special device path the kernel searches for)
     let _initrd_loader = if let Some(initrd) = initrd {
         Some(InitrdLoader::load(initrd).map_err(BootLinuxError::LoadInitrdError)?)
@@ -53,8 +40,8 @@ pub fn boot_linux(
         None
     };
 
-    // Install command line to kernel loaded image
-    let _cmdline_utf16 = if let Some(cmdline) = cmdline {
+    // Convert command line to UTF-16
+    let cmdline_utf16 = if let Some(cmdline) = cmdline {
         let mut cmdline_utf16: Vec<u16> = Vec::new();
         cmdline_utf16.extend(
             core::str::from_utf8(cmdline)
@@ -62,23 +49,16 @@ pub fn boot_linux(
                 .encode_utf16(),
         );
         cmdline_utf16.push(0);
-
-        unsafe {
-            // SAFETY: _cmdline_utf16 lives through the rest of this function,
-            // and the loaded image referencing it cannot escape this function.
-            li.set_load_options(
-                cmdline_utf16.as_ptr() as *const u8,
-                (cmdline_utf16.len() * size_of::<u16>()) as u32,
-            );
-        }
         Some(cmdline_utf16)
     } else {
         None
     };
 
-    // Start kernel image
-    uefi::boot::start_image(handle).map_err(BootLinuxError::StartKernelError)?;
-    panic!("fatal: kernel returned");
+    // Load kernel
+    let lace_image = LaceLoadedImage::load(kernel).map_err(BootLinuxError::LoadKernelError)?;
+
+    // Start the kernel
+    lace_image.start(cmdline_utf16.as_deref());
 }
 
 struct InitrdLoader<'initrd> {
