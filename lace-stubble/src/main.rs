@@ -73,27 +73,25 @@ fn main() -> uefi::Status {
     );
 
     // Find suitable DTB from .dtbauto sections
-    // Parse using lace_util::fdt::Fdt then get compatible like below
+    // Keep installed dtb receipt here so it is in scope for the kernel boot
+    let mut installed_dtb = None;
     if let Some(compatible) = compatible {
-        let mut installed = false;
         for dtb_data in dtbauto {
             let dtb_fdt = match lace_util::fdt::Fdt::new(dtb_data) {
                 Ok(fdt) => fdt,
                 Err(e) => {
-                    uefi::println!("  skipping invalid .dtbauto section: {}", e);
+                    uefi::println!("Skipping invalid .dtbauto section: {}", e);
                     continue;
                 }
             };
             if dtb_fdt.root().compatible().first() == compatible {
                 uefi::println!("Installing DTB for compatible {}", compatible);
-                unsafe {
-                    install_dtb(dtb_data).expect("failed to install DTB");
-                }
-                installed = true;
+                installed_dtb =
+                    unsafe { Some(install_dtb(dtb_data).expect("failed to install DTB")) };
                 break;
             }
         }
-        if !installed {
+        if installed_dtb.is_none() {
             uefi::println!(
                 "No matching DTB found for compatible {}, skipping DTB installation",
                 compatible
