@@ -12,7 +12,6 @@ use core::{ffi::c_void, fmt::Display};
 pub enum BootLinuxError {
     LoadKernelError(LaceLoadImageError),
     LoadInitrdError(uefi::Error),
-    CmdlineUtf8Error,
 }
 
 impl Display for BootLinuxError {
@@ -20,7 +19,6 @@ impl Display for BootLinuxError {
         match self {
             BootLinuxError::LoadKernelError(e) => write!(f, "failed to load kernel image: {}", e),
             BootLinuxError::LoadInitrdError(e) => write!(f, "failed to load initrd image: {}", e),
-            BootLinuxError::CmdlineUtf8Error => write!(f, "command line is not valid UTF-8"),
         }
     }
 }
@@ -31,7 +29,7 @@ impl Display for BootLinuxError {
 pub fn boot_linux(
     kernel: &[u8],
     initrd: Option<&[u8]>,
-    cmdline: Option<&[u8]>,
+    cmdline: Option<&str>,
 ) -> Result<(), BootLinuxError> {
     // Load initrd (this will create a handle with a special device path the kernel searches for)
     let _initrd_loader = if let Some(initrd) = initrd {
@@ -43,11 +41,7 @@ pub fn boot_linux(
     // Convert command line to UTF-16
     let cmdline_utf16 = if let Some(cmdline) = cmdline {
         let mut cmdline_utf16: Vec<u16> = Vec::new();
-        cmdline_utf16.extend(
-            core::str::from_utf8(cmdline)
-                .map_err(|_| BootLinuxError::CmdlineUtf8Error)?
-                .encode_utf16(),
-        );
+        cmdline_utf16.extend(cmdline.encode_utf16());
         cmdline_utf16.push(0);
         Some(cmdline_utf16)
     } else {
