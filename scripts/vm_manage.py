@@ -11,6 +11,7 @@ import platform
 import shutil
 import subprocess
 import guestfs
+import pefile
 import requests
 
 # Enable DEBUG mode
@@ -294,18 +295,25 @@ def build_and_inject_stubble(args, config):
     gfs.download(f"/boot/{kernel_name}", os.path.join(args.dir, "vmlinuz"))
     gfs.download(f"/boot/{initrd_name}", os.path.join(args.dir, "initrd.img"))
 
-    # On arm64 strip existing stubble layer from kernel using objcopy
+    # On arm64 strip existing stubble layer from kernel
+    dtbauto_files = []
     if config["arch"] == "aarch64":
-        subprocess.run(
-            [
-                "aarch64-linux-gnu-objcopy",
-                "--dump-section",
-                ".linux=" + os.path.join(args.dir, "vmlinuz-really"),
-                os.path.join(args.dir, "vmlinuz"),
-                os.path.join(args.dir, "unused"),
-            ],
-            check=True,
-        )
+        pe = pefile.PE(os.path.join(args.dir, "vmlinuz"))
+        dtbauto_idx = 0
+        for section in pe.sections:
+            if section.Name.rstrip(b"\x00") == b".linux":
+                with open(os.path.join(args.dir, "vmlinuz-really"), "wb") as vmlinuz_really:
+                    vmlinuz_really.write(
+                        section.get_data()
+                    )
+            elif section.Name.rstrip(b"\x00") == b".dtbauto":
+                dtbauto_path = os.path.join(args.dir, f"dtbauto-{dtbauto_idx}")
+                with open(dtbauto_path, "wb") as dtbauto_file:
+                    dtbauto_file.write(
+                        section.get_data()
+                    )
+                dtbauto_files.append(dtbauto_path)
+                dtbauto_idx += 1
         shutil.move(
             os.path.join(args.dir, "vmlinuz-really"), os.path.join(args.dir, "vmlinuz")
         )
@@ -334,6 +342,10 @@ def build_and_inject_stubble(args, config):
         "--hwids",
         "data/hwids/json",
     ]
+    # Add dtbauto files we might have extracted above
+    if dtbauto_files:
+        for dtbauto_file in dtbauto_files:
+            pewrap_cmd.extend(["--dtbauto", dtbauto_file])
     subprocess.run(pewrap_cmd, check=True)
 
     # Copy EFI binary to ESP
