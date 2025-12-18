@@ -9,5 +9,6 @@ fdt = { version = "0.1.5", default-features = false }
 zerocopy = { version = "0.8.40", features = ["derive"] }
 
 [features]
-default = ["std"]
+default = ["std", "grub"]
 std = []
+grub = []
