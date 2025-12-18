@@ -8,6 +8,7 @@
 
 extern crate alloc;
 
+use alloc::borrow::ToOwned;
 use alloc::vec::Vec;
 use lace_platform::dtb::install_dtb;
 use lace_platform::linux::boot_linux;
@@ -49,10 +50,33 @@ fn main() -> uefi::Status {
         match sect.name() {
             b".linux" => kernel = Some(data),
             b".initrd" => initrd = Some(data),
-            b".cmdline" => cmdline = Some(data),
+            b".cmdline" => {
+                cmdline = Some(
+                    core::str::from_utf8(data)
+                        .expect("invalid UTF-8 in .cmdline section")
+                        .to_owned(),
+                )
+            }
             b".hwids" => hwids = Some(data),
             b".dtbauto" => dtbauto.push(data),
             _ => {}
+        }
+    }
+
+    // If no .cmdline section is present, pass along the external command line passed to stubble
+    if cmdline.is_none() {
+        match li.load_options_as_cstr16() {
+            Ok(cstr16) => {
+                cmdline = Some(
+                    core::char::decode_utf16(cstr16.to_u16_slice().iter().cloned())
+                        .map(|r| r.unwrap_or(core::char::REPLACEMENT_CHARACTER))
+                        .collect(),
+                );
+            }
+            Err(uefi::proto::loaded_image::LoadOptionsError::NotSet) => (),
+            Err(e) => {
+                uefi::println!("Invalid load options: {:?}", e);
+            }
         }
     }
 
@@ -110,7 +134,7 @@ fn main() -> uefi::Status {
     }
 
     // Boot the kernel
-    boot_linux(kernel, initrd, cmdline).expect("failed to start linux");
+    boot_linux(kernel, initrd, cmdline.as_deref()).expect("failed to start linux");
 
     #[allow(clippy::empty_loop)]
     loop {}
