@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-only OR GPL-3.0-only"
+
+[dependencies]
+clap = { version = "4.5.53", features = ["derive"] }
+clap_mangen = "0.2"
+
+# Tool dependencies for generating man pages
+pewrap = { path = "../pewrap" }
+collect-hwids = { path = "../collect-hwids" }

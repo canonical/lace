@@ -6,53 +6,12 @@ use clap::Parser;
 use lace_util::chid_mapping::*;
 use lace_util::peimage::*;
 use lace_util::*;
+use pewrap::cli::Args;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::VecDeque,
-    fmt::Display,
-    fs::DirEntry,
-    io,
-    mem::offset_of,
-    path::{Path, PathBuf},
-    process,
+    collections::VecDeque, fmt::Display, fs::DirEntry, io, mem::offset_of, path::Path, process,
 };
 use zerocopy::IntoBytes;
-
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    /// Path to input stub PE image
-    #[arg(short, long)]
-    stub: PathBuf,
-
-    /// Path to output PE image
-    #[arg(short, long)]
-    output: PathBuf,
-
-    /// Path to linux kernel image to add
-    #[arg(short, long)]
-    linux: Option<PathBuf>,
-
-    /// Path to initrd image to add
-    #[arg(short, long)]
-    initrd: Option<PathBuf>,
-
-    /// Kernel command line to add
-    #[arg(short, long)]
-    cmdline: Option<String>,
-
-    /// Add .sbat section with SBAT data from the given file
-    #[arg(long)]
-    sbat: Option<PathBuf>,
-
-    /// HWIDs directory to scan for JSON files
-    #[arg(long)]
-    hwids: Option<PathBuf>,
-
-    /// Device tree blobs to add for automatic loading
-    #[arg(long)]
-    dtbauto: Vec<PathBuf>,
-}
 
 fn main() {
     let args = Args::parse();

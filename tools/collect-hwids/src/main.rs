@@ -3,10 +3,10 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 
 use clap::Parser;
+use collect_hwids::cli::Args;
 use lace_util::chid::*;
 use regex::bytes::Regex;
 use std::error::Error;
-use std::ffi::OsString;
 use std::io::Write;
 use zip::{CompressionMethod, ZipWriter, write::SimpleFileOptions};
 
@@ -14,14 +14,6 @@ const SMBIOS_EP_PATH: &str = "/sys/firmware/dmi/tables/smbios_entry_point";
 const SMBIOS_PATH: &str = "/sys/firmware/dmi/tables/DMI";
 
 const DRM_PATH: &str = "/sys/class/drm";
-
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    /// Where to write HWIDs zip archive
-    #[arg(short, long)]
-    output: Option<OsString>,
-}
 
 fn main() {
     let args = Args::parse();
