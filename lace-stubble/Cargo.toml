@@ -12,3 +12,6 @@ uefi = { version = "0.36.0", features = ["global_allocator", "panic_handler"] }
 [[bin]]
 name = "lace-stubble"
 test = false
+
+[lib]
+test = false
