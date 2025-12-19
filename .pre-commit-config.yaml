@@ -27,7 +27,7 @@ repos:
       - id: cargo-check
         name: cargo check
         description: Check that Rust code compiles
-        entry: ./scripts/cargo_ci.py check --workspace --exclude lace-boot
+        entry: ./scripts/cargo_ci.py check --workspace
         language: system
         types: [rust]
         pass_filenames: false
@@ -43,7 +43,7 @@ repos:
       - id: cargo-test
         name: cargo test
         description: Run unit tests
-        entry: ./scripts/cargo_ci.py test --workspace --exclude lace-stubble --exclude fakeedid --exclude u-boot-sys
+        entry: ./scripts/cargo_ci.py test --workspace
         language: system
         types: [rust]
         pass_filenames: false
