@@ -5,3 +5,7 @@ edition = "2024"
 
 [dependencies]
 uefi = { version = "0.36.1", features = ["panic_handler"] }
+
+[[bin]]
+name = "fakeedid"
+test = false
