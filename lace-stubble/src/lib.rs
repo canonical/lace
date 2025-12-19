@@ -12,12 +12,12 @@ use core::fmt::Display;
 use lace_platform::debugln;
 use lace_platform::dtb::install_dtb;
 use lace_platform::linux::boot_linux;
-use lace_util::peimage::parse_pe;
+use lace_util::peimage::{PeError, SectionHeader, parse_pe};
 
 /// Errors that can occur when booting a Stubble image.
 #[derive(Clone, Copy, Debug)]
 pub enum BootStubbleError {
-    PeError(lace_util::peimage::PeError),
+    PeError(PeError),
     NotAStubbleImage,
     InvalidCommandLine,
 }
@@ -32,45 +32,66 @@ impl Display for BootStubbleError {
     }
 }
 
+/// A stubble image can be handled either already loaded or in raw form
+pub enum StubbleImage<'a> {
+    Loaded(&'a [u8]),
+    Raw(&'a [u8]),
+}
+
 /// Boots a Stubble image with an optional initrd and command line.
 /// The initrd and command line will only be used if the Stubble image does not
 /// contain corresponding sections (.initrd and .cmdline).
-pub fn boot_stubble_image(
-    stubble_image: &[u8],
+pub fn boot_stubble_image<'image>(
+    stubble_image: StubbleImage<'image>,
     initrd: Option<&[u8]>,
     cmdline: Option<&str>,
 ) -> Result<(), BootStubbleError> {
-    let pe = parse_pe(stubble_image).map_err(BootStubbleError::PeError)?;
+    // Parse image
+    let (data, raw) = match stubble_image {
+        StubbleImage::Loaded(s) => (s, false),
+        StubbleImage::Raw(s) => (s, true),
+    };
+    let pe = parse_pe(data).map_err(BootStubbleError::PeError)?;
 
-    // Find relevant sections
+    // Parsed sections/data
     let mut kernel = None;
     let mut initrd = initrd;
     let mut cmdline = cmdline;
     let mut hwids = None;
     let mut dtbauto: Vec<&[u8]> = Vec::new();
 
-    debugln!("PE sections");
-    for result in pe.virtual_sections() {
-        let (sect, data) = result.map_err(BootStubbleError::PeError)?;
-        debugln!(
-            "  {:<8} {:08x} {:08x}",
-            str::from_utf8(sect.name()).unwrap(),
-            sect.virtual_address,
-            sect.virtual_size
-        );
+    // Closure to process each section
+    let section_filter =
+        |result: Result<(SectionHeader, &'image [u8]), PeError>| -> Result<(), BootStubbleError> {
+            let (sect, data) = result.map_err(BootStubbleError::PeError)?;
+            debugln!(
+                "  {:<8} {:08x} {:08x}",
+                str::from_utf8(sect.name()).unwrap(),
+                sect.virtual_address,
+                sect.virtual_size
+            );
 
-        match sect.name() {
-            b".linux" => kernel = Some(data),
-            b".initrd" => initrd = Some(data),
-            b".cmdline" => {
-                cmdline = Some(
-                    core::str::from_utf8(data).map_err(|_| BootStubbleError::InvalidCommandLine)?,
-                )
+            match sect.name() {
+                b".linux" => kernel = Some(data),
+                b".initrd" => initrd = Some(data),
+                b".cmdline" => {
+                    cmdline = Some(
+                        core::str::from_utf8(data)
+                            .map_err(|_| BootStubbleError::InvalidCommandLine)?,
+                    )
+                }
+                b".hwids" => hwids = Some(data),
+                b".dtbauto" => dtbauto.push(data),
+                _ => {}
             }
-            b".hwids" => hwids = Some(data),
-            b".dtbauto" => dtbauto.push(data),
-            _ => {}
-        }
+            Ok(())
+        };
+
+    debugln!("PE sections");
+    if raw {
+        pe.raw_sections().try_for_each(section_filter)?;
+    } else {
+        pe.virtual_sections().try_for_each(section_filter)?;
     }
 
     // Ensure kernel is present

@@ -42,8 +42,12 @@ fn main() -> uefi::Status {
     };
 
     // Boot the stubble image
-    lace_stubble::boot_stubble_image(li_slice, None, external_cmdline.as_deref())
-        .expect("Failed to boot");
+    lace_stubble::boot_stubble_image(
+        lace_stubble::StubbleImage::Loaded(li_slice),
+        None,
+        external_cmdline.as_deref(),
+    )
+    .expect("Failed to boot");
 
     unreachable!()
 }
