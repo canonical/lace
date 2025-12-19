@@ -188,6 +188,7 @@ def create_disk_image(args):
     root_partition = partitions[1]
     gfs.mkfs("vfat", esp_partition)
     gfs.mkfs(args.root_fs_type, root_partition)
+    gfs.set_label(root_partition, "cloudimg-rootfs")
 
     # Copy files from Ubuntu cloud image to new disk
     gfs.mkdir_p("/disk")
@@ -203,9 +204,8 @@ UUID={gfs.vfs_uuid(esp_partition)} /boot/efi vfat umask=0077 0 2
 """
     gfs.write("/disk/etc/fstab", fstab_content)
 
-    # Remove GRUB installation and EFI files
-    gfs.rm_rf("/disk/boot/grub")
-    gfs.rm_rf("/disk/boot/efi/EFI")
+    # Remove EFI files
+    gfs.rm_rf("/disk/boot/efi/EFI/")
 
     # Close disks
     gfs.umount_all()
