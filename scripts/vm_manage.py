@@ -338,7 +338,7 @@ def build_and_inject_stubble(args, config):
         "--initrd",
         os.path.join(args.dir, "initrd.img"),
         "--cmdline",
-        f"console=tty0 root=UUID={gfs.vfs_uuid(roots[0])} rw",
+        f"console=ttyS0 console=tty0 root=UUID={gfs.vfs_uuid(roots[0])} rw",
         "--hwids",
         "data/hwids/json",
     ]
@@ -380,6 +380,7 @@ def do_start(args):
     # Construct QEMU command
     qemu_cmd = [
         "qemu-system-" + config["arch"],
+        "-nographic",
         "-machine",
         f"{config['machine']},accel={best_vm_accel(config['arch'])}{acpi_flag}",
         "-cpu",
