@@ -8,5 +8,5 @@ license = "GPL-2.0-only OR GPL-3.0-only"
 clap = { version = "4.5.54", features = ["derive", "wrap_help"] }
 lace-util = { version = "0.1.0", path = "../../lace-util" }
 regex = "1.12.2"
-zerocopy = "0.8.31"
+zerocopy = "0.8.33"
 zip = { version = "7.0.0", default-features = false, features = ["deflate"] }
