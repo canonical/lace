@@ -3,7 +3,9 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! EFI image loading.
 
-use super::mem::{AllocateType, MemoryType, PageAllocation, page_count};
+use super::mem::{
+    MemoryType, PageAllocation, PageAllocationConstraint, PageAllocationIface, page_count,
+};
 use core::{ffi::c_void, fmt::Display};
 use lace_util::peimage;
 
@@ -47,10 +49,10 @@ impl LaceLoadedImage {
     /// Loads an EFI image from the given byte slice.
     pub fn load(image: &[u8]) -> Result<Self, LaceLoadImageError> {
         let pe = peimage::parse_pe(image).map_err(LaceLoadImageError::PeError)?;
-        let mut pages = PageAllocation::new_uninit(
-            AllocateType::AnyPages,
+        let mut pages = PageAllocation::new_zerod(
+            PageAllocationConstraint::AnyAddress,
             MemoryType::LOADER_CODE,
-            page_count!(pe.nt_hdrs.optional_header.size_of_image as usize),
+            page_count(pe.nt_hdrs.optional_header.size_of_image as usize),
         )
         .map_err(LaceLoadImageError::MemoryAllocationError)?;
         pe.relocate_into(pages.as_u8_slice_mut())

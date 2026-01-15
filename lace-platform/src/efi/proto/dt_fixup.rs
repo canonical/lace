@@ -3,7 +3,9 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! EFI device-tree fix-up protocol.
 
-use crate::efi::mem::{AllocateType, MemoryType, PageAllocation, page_count};
+use crate::efi::mem::{
+    MemoryType, PageAllocation, PageAllocationConstraint, PageAllocationIface, page_count,
+};
 
 /// The EFI device-tree fix-up protocol provides a function to let the firmware apply fix-ups.
 /// Ref: https://github.com/U-Boot-EFI/EFI_DT_FIXUP_PROTOCOL
@@ -54,12 +56,11 @@ impl DtFixupProtocol {
     pub fn fixup_owned(&mut self, dtb: &[u8]) -> uefi::Result<PageAllocation> {
         // Create buffer holding a copy of the dtb
         let mut buf = PageAllocation::new_init_prefix(
-            AllocateType::AnyPages,
+            PageAllocationConstraint::AnyAddress,
             MemoryType::ACPI_RECLAIM,
-            page_count!(dtb.len()),
+            page_count(dtb.len()),
             dtb,
         )?;
-
         // Try to apply fixups, but we might get BUFFER_TOO_SMALL on
         // the first attempt
         match self.fixup(buf.as_u8_slice_mut()) {
@@ -70,12 +71,11 @@ impl DtFixupProtocol {
             Err(e) if e.status() == uefi::Status::BUFFER_TOO_SMALL => {
                 // Reallocate with correct size
                 buf = PageAllocation::new_init_prefix(
-                    AllocateType::AnyPages,
+                    PageAllocationConstraint::AnyAddress,
                     MemoryType::ACPI_RECLAIM,
-                    page_count!(e.data()),
+                    page_count(*e.data()),
                     dtb,
                 )?;
-
                 // We will not get BUFFER_TOO_SMALL this time
                 self.fixup(buf.as_u8_slice_mut())
                     .map(|_| buf)

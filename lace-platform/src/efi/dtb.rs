@@ -3,7 +3,9 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! Device tree related EFI functionality.
 
-use crate::efi::mem::{AllocateType, MemoryType, PageAllocation, page_count};
+use crate::efi::mem::{
+    MemoryType, PageAllocation, PageAllocationConstraint, PageAllocationIface, page_count,
+};
 use crate::efi::open_protocol_exclusive;
 use crate::efi::proto::dt_fixup;
 
@@ -44,9 +46,9 @@ pub unsafe fn install_dtb(dtb: &[u8]) -> Result<impl Drop, uefi::Error> {
     let buf: PageAllocation = match open_protocol_exclusive::<dt_fixup::DtFixupProtocol>() {
         Ok(mut proto) => proto.fixup_owned(dtb)?,
         Err(_) => PageAllocation::new_init_prefix(
-            AllocateType::AnyPages,
+            PageAllocationConstraint::AnyAddress,
             MemoryType::ACPI_RECLAIM,
-            page_count!(dtb.len()),
+            page_count(dtb.len()),
             dtb,
         )?,
     };

@@ -10,11 +10,16 @@ extern crate alloc;
 use alloc::vec::Vec;
 use lace_util::fdt::node::FdtNode;
 
+// Interfaces for platform implementations.
+// These are not strictly necessary as the active platform is chosen at compile time,
+// but they help to clarify the expected API surface for each platform.
+pub mod iface;
+
 // Platform implementations
 // TODO(mkukri): choose which platform we build and alias as 'p'
 // based on build target.
 pub mod efi;
-// pub mod ...;
+pub mod mock;
 
 use efi as p;
 // use ... as p;
