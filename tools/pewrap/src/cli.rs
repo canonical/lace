@@ -83,4 +83,20 @@ pub struct Args {
     /// DTB for the current hardware platform at boot time.
     #[arg(long, value_name = "FILE")]
     pub dtbauto: Vec<PathBuf>,
+
+    /// Post-process a lace-stubble PE binary for systemd-ukify compatibility
+    ///
+    /// systemd-ukify works with lace-stubble, but unlike pewrap, systemd-ukify does not
+    /// have the ability to relayout the raw layout of a PE image, and as a result the
+    /// maximum number of sections it can handle is limited to how many fit before the
+    /// original SizeOfHeaders value.
+    ///
+    /// pewrap can relayout the raw layout of the image, which gives it the ability to
+    /// add as many sections as able to fit before the VirtualAddress of the first section.
+    ///
+    /// This option instructs pewrap to relayout the image by setting SizeOfHeaders
+    /// to as large as possible, maximizing the number of sections that can be added by
+    /// systemd-ukify later on.
+    #[arg(long)]
+    pub post_process_for_ukify: bool,
 }

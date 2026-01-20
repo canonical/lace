@@ -157,7 +157,7 @@ fn main() {
     }
 
     // Calculate section offsets
-    if let Err(e) = bld.fixup_offsets() {
+    if let Err(e) = bld.fixup_offsets(args.post_process_for_ukify) {
         eprintln!("{}: {}", args.output.display(), e);
         process::exit(1);
     }
@@ -359,24 +359,39 @@ impl<'s> PeRebuilder<'s> {
         self.sections.push((shdr, data));
     }
 
-    fn fixup_offsets(&mut self) -> Result<(), PeRebuildError> {
+    fn fixup_offsets(&mut self, maximize_header_space: bool) -> Result<(), PeRebuildError> {
         self.nt_hdrs.file_header.number_of_sections = self.sections.len() as u16;
         self.nt_hdrs.optional_header.size_of_code = 0;
         self.nt_hdrs.optional_header.size_of_initialized_data = 0;
         self.nt_hdrs.optional_header.size_of_uninitialized_data = 0;
-        let raw_size_of_headers = self.dos_hdr.e_lfanew
+        let mut unaligned_size_of_headers = self.dos_hdr.e_lfanew
             + offset_of!(NtHeaders64, optional_header) as u32
             + self.nt_hdrs.file_header.size_of_optional_header as u32
             + self.nt_hdrs.file_header.number_of_sections as u32
                 * size_of::<SectionHeader>() as u32;
+        if maximize_header_space {
+            // Increase SizeOfHeaders to maximum possible to allow adding more sections later
+            let min_section_virtual_address = self
+                .sections
+                .iter()
+                .map(|(shdr, _)| shdr.virtual_address)
+                .min()
+                .unwrap_or(unaligned_size_of_headers);
+            if min_section_virtual_address > unaligned_size_of_headers {
+                // Setting this unaligned value to the clearly section aligned VA is fine,
+                // because section alignment is a multiple of file alignment, and the below
+                // align_up! calls will fix do nothing.
+                unaligned_size_of_headers = min_section_virtual_address;
+            }
+        }
         // Loaded image size starts with the size of headers rounded to section alignment
         self.nt_hdrs.optional_header.size_of_image = align_up!(
-            raw_size_of_headers,
+            unaligned_size_of_headers,
             self.nt_hdrs.optional_header.section_alignment
         );
         // PE spec says size of headers is rounded to the file alignment
         self.nt_hdrs.optional_header.size_of_headers = align_up!(
-            raw_size_of_headers,
+            unaligned_size_of_headers,
             self.nt_hdrs.optional_header.file_alignment
         );
 
