@@ -16,13 +16,15 @@ use lace_util::fdt::node::FdtNode;
 pub mod iface;
 
 // Platform implementations
-// TODO(mkukri): choose which platform we build and alias as 'p'
-// based on build target.
+#[cfg(feature = "efi")]
 pub mod efi;
+#[cfg(feature = "mock")]
 pub mod mock;
 
+#[cfg(feature = "efi")]
 use efi as p;
-// use ... as p;
+#[cfg(feature = "mock")]
+use mock as p;
 
 // Re-export portable APIs from the active platform at the top-level namespace.
 // The list of APIs exported here constitutes the portable Lace platform API.
