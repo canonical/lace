@@ -35,7 +35,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
-use syn::{parse_macro_input, Data, DeriveInput, Fields};
+use syn::{parse_macro_input, Data, DeriveInput, Fields, ItemFn};
 
 /// Derive macro for generating bidirectional conversions between enums and
 /// integer types.
@@ -432,4 +432,32 @@ pub fn derive_named_enum(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(expanded)
+}
+
+/// Attribute macro to mark the application entry point function.
+///
+/// This macro transforms the annotated function into the application entry
+/// point by applying the `#[unsafe(export_name = "main")]` attribute.
+/// # Usage
+/// ```ignore
+/// use lace_util_derive::entry;
+/// #[entry]
+/// fn main() {
+///     // Application code here
+/// }
+/// ```
+/// # Panics
+/// This macro will panic at compile time if any arguments are
+/// provided to the attribute.
+#[proc_macro_attribute]
+pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
+    if !args.is_empty() {
+        panic!("#[entry] does not accept any arguments");
+    }
+    let func = parse_macro_input!(input as ItemFn);
+    quote! {
+        #[unsafe(export_name = "main")]
+        #func
+    }
+    .into()
 }

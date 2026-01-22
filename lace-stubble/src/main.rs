@@ -9,11 +9,10 @@
 extern crate alloc;
 
 use alloc::string::String;
+use lace_platform::{Error, entry, println};
 
-#[uefi::entry]
-fn main() -> uefi::Status {
-    uefi::helpers::init().unwrap();
-
+#[entry]
+fn main() -> Result<(), Error> {
     // Parse own loaded image
     let li = uefi::boot::open_protocol_exclusive::<uefi::proto::loaded_image::LoadedImage>(
         uefi::boot::image_handle(),
@@ -36,7 +35,7 @@ fn main() -> uefi::Status {
         ),
         Err(uefi::proto::loaded_image::LoadOptionsError::NotSet) => None,
         Err(e) => {
-            uefi::println!("Invalid load options: {:?}", e);
+            println!("Invalid load options: {:?}", e);
             None
         }
     };

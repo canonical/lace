@@ -241,6 +241,7 @@ name = "lace-platform"
 version = "0.1.0"
 dependencies = [
  "lace-util",
+ "lace-util-derive",
  "spin",
  "uefi",
  "uefi-raw",

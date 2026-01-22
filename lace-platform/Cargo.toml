@@ -6,6 +6,7 @@ license = "GPL-2.0-only OR GPL-3.0-only"
 
 [dependencies]
 lace-util = { version = "0.1.0", path = "../lace-util", default-features = false }
+lace-util-derive = { version = "0.1.0", path = "../lace-util-derive" }
 spin = { version = "0.10.0", optional = true }
 uefi = { version = "0.36.1", optional = true }
 uefi-raw = { version = "0.13.0", optional = true }

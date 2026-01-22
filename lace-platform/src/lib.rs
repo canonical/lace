@@ -77,6 +77,9 @@ macro_rules! debugln {
     ($($arg:tt)*) => {};
 }
 
+// Re-export derive macros
+pub use lace_util_derive::entry;
+
 pub use p::find_edid;
 pub use p::find_smbios_tables;
 

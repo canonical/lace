@@ -99,3 +99,18 @@ pub fn find_smbios_tables() -> Option<(&'static [u8], &'static [u8])> {
     }
     None
 }
+
+/// EFI main function, initializes global state and calls the application entry point.
+#[uefi::entry]
+fn efi_main() -> uefi::Status {
+    uefi::helpers::init().unwrap();
+
+    unsafe extern "Rust" {
+        fn main() -> Result<(), Error>;
+    }
+
+    match unsafe { main() } {
+        Ok(()) => uefi::Status::SUCCESS,
+        Err(e) => e.status(),
+    }
+}
