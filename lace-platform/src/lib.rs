@@ -27,7 +27,54 @@ use efi as p;
 // Re-export portable APIs from the active platform at the top-level namespace.
 // The list of APIs exported here constitutes the portable Lace platform API.
 pub use p::Error;
-pub use p::debugln;
+
+/// The macros below are implemented using these.
+pub use p::{print_impl, println_impl};
+
+// Macros for text output that should always be available
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => {
+        $crate::print_impl(format_args!($($arg)*))
+    };
+}
+
+#[macro_export]
+macro_rules! println {
+    ($($arg:tt)*) => {
+        $crate::println_impl(format_args!($($arg)*))
+    };
+}
+
+// Macros for debug text output that is only active in debug builds
+#[macro_export]
+#[cfg(debug_assertions)]
+macro_rules! debug {
+    ($($arg:tt)*) => {
+        $crate::print_impl(format_args!($($arg)*))
+    };
+}
+
+#[macro_export]
+#[cfg(not(debug_assertions))]
+macro_rules! debug {
+    ($($arg:tt)*) => {};
+}
+
+#[macro_export]
+#[cfg(debug_assertions)]
+macro_rules! debugln {
+    ($($arg:tt)*) => {
+        $crate::println_impl(format_args!($($arg)*))
+    };
+}
+
+#[macro_export]
+#[cfg(not(debug_assertions))]
+macro_rules! debugln {
+    ($($arg:tt)*) => {};
+}
+
 pub use p::find_edid;
 pub use p::find_smbios_tables;
 
