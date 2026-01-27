@@ -31,24 +31,31 @@ pub trait PageAllocationIface<Address>: Sized {
 
     /// Allocates `pages` pages of memory using the platform page allocator.
     /// The memory is uninitialized.
+    ///
+    /// # Parameters
+    /// - `alignment`: Optional alignment in bytes (must be a power of two).
+    ///   If `None`, uses the platform's default alignment.
+    ///
     /// # Safety
     /// The caller must ensure that the allocated memory is properly initialized before use.
     unsafe fn new_uninit(
         constraint: PageAllocationConstraint<Address>,
         memory_type: Self::MemoryType,
         pages: usize,
+        alignment: Option<usize>,
     ) -> Result<Self, Self::Error>;
 
     /// Allocates `pages` pages of memory using the platform page allocator.
     /// The memory is zero-initialized.
-    fn new_zerod(
+    fn new_zeroed(
         constraint: PageAllocationConstraint<Address>,
         memory_type: Self::MemoryType,
         pages: usize,
+        alignment: Option<usize>,
     ) -> Result<Self, Self::Error> {
         unsafe {
             // SAFETY: We immediately initialize the memory after allocation, before safe code can access it.
-            let allocation = Self::new_uninit(constraint, memory_type, pages)?;
+            let allocation = Self::new_uninit(constraint, memory_type, pages, alignment)?;
             let s: &mut [MaybeUninit<u8>] = core::slice::from_raw_parts_mut(
                 allocation.as_ptr().cast(),
                 pages * Self::PAGE_SIZE,
@@ -64,18 +71,19 @@ pub trait PageAllocationIface<Address>: Sized {
         constraint: PageAllocationConstraint<Address>,
         memory_type: Self::MemoryType,
         pages: usize,
+        alignment: Option<usize>,
         init: &[u8],
     ) -> Result<Self, Self::Error> {
         assert!(pages * Self::PAGE_SIZE >= init.len());
         unsafe {
             // SAFETY: We immediately initialize the memory after allocation, before safe code can access it.
-            let allocation = Self::new_uninit(constraint, memory_type, pages)?;
+            let allocation = Self::new_uninit(constraint, memory_type, pages, alignment)?;
             let s: &mut [MaybeUninit<u8>] = core::slice::from_raw_parts_mut(
                 allocation.as_ptr().cast(),
                 pages * Self::PAGE_SIZE,
             );
             let (dinit, dzero) = s.split_at_mut(init.len());
-            dinit.write_copy_of_slice(init);
+            core::ptr::copy_nonoverlapping(init.as_ptr(), dinit.as_mut_ptr().cast(), init.len());
             dzero.fill(MaybeUninit::new(0));
             Ok(allocation)
         }

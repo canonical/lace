@@ -54,7 +54,15 @@ impl PageAllocationIface<Address> for PageAllocation {
         constraint: PageAllocationConstraint<Address>,
         memory_type: MemoryType,
         pages: usize,
+        alignment: Option<usize>,
     ) -> Result<Self, uefi::Error> {
+        // UEFI boot services only guarantee page-aligned memory.
+        // Reject requests for larger alignment.
+        if let Some(align) = alignment
+            && align > PAGE_SIZE
+        {
+            return Err(uefi::Error::new(uefi::Status::UNSUPPORTED, ()));
+        }
         let ptr = uefi::boot::allocate_pages(constraint.into(), memory_type, pages)?;
         Ok(PageAllocation { ptr, pages })
     }

@@ -59,6 +59,7 @@ impl DtFixupProtocol {
             PageAllocationConstraint::AnyAddress,
             MemoryType::ACPI_RECLAIM,
             page_count(dtb.len()),
+            None,
             dtb,
         )?;
         // Try to apply fixups, but we might get BUFFER_TOO_SMALL on
@@ -74,6 +75,7 @@ impl DtFixupProtocol {
                     PageAllocationConstraint::AnyAddress,
                     MemoryType::ACPI_RECLAIM,
                     page_count(*e.data()),
+                    None,
                     dtb,
                 )?;
                 // We will not get BUFFER_TOO_SMALL this time

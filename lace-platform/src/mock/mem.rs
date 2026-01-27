@@ -20,19 +20,35 @@ pub const fn page_count(size: usize) -> usize {
     size.div_ceil(PAGE_SIZE)
 }
 
+/// Default alignment when none is specified (page-aligned).
+const DEFAULT_ALIGNMENT: usize = PAGE_SIZE;
+
+/// Maximum supported alignment (4 MiB).
+const MAX_ALIGNMENT: usize = 4 * 1024 * 1024;
+
 /// Error type for page allocation failures in the mock platform.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PageAllocationFailure {
     OutOfMemory,
     UnsupportedConstraint,
+    /// The requested alignment is not a power of two.
+    InvalidAlignment,
+    /// The requested alignment exceeds the maximum (4 MiB).
+    AlignmentTooLarge,
 }
 
 impl core::fmt::Display for PageAllocationFailure {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            PageAllocationFailure::OutOfMemory => write!(f, "Out of memory"),
-            PageAllocationFailure::UnsupportedConstraint => {
+            Self::OutOfMemory => write!(f, "Out of memory"),
+            Self::UnsupportedConstraint => {
                 write!(f, "Unsupported page allocation constraint")
+            }
+            Self::InvalidAlignment => {
+                write!(f, "Alignment must be a power of two")
+            }
+            Self::AlignmentTooLarge => {
+                write!(f, "Alignment exceeds maximum of 4 MiB")
             }
         }
     }
@@ -87,27 +103,49 @@ impl PageAllocationIface<Address> for PageAllocation {
         constraint: PageAllocationConstraint<Address>,
         _memory_type: Self::MemoryType,
         pages: usize,
+        alignment: Option<usize>,
     ) -> Result<Self, Self::Error> {
         match constraint {
             PageAllocationConstraint::AnyAddress => (),
             _ => return Err(PageAllocationFailure::UnsupportedConstraint),
         }
-        let mut guard = MOCK_PAGE_POOL.lock();
 
+        // Default to page-aligned; validate alignment
+        let alignment = alignment.unwrap_or(DEFAULT_ALIGNMENT);
+        if !alignment.is_power_of_two() {
+            return Err(PageAllocationFailure::InvalidAlignment);
+        }
+        if alignment > MAX_ALIGNMENT {
+            return Err(PageAllocationFailure::AlignmentTooLarge);
+        }
+
+        let mut guard = MOCK_PAGE_POOL.lock();
         let pool = guard.as_mut().expect("Mock page pool not initialized");
 
-        let end: usize = pages
+        // Calculate aligned address
+        let base_addr = pool.memory.as_ptr() as usize + pool.watermark;
+        let aligned_addr = base_addr.next_multiple_of(alignment);
+        let alignment_padding = aligned_addr - base_addr;
+
+        // Calculate total size needed
+        let alloc_size = pages
             .checked_mul(PAGE_SIZE)
-            .and_then(|x| x.checked_add(pool.watermark))
             .ok_or(PageAllocationFailure::OutOfMemory)?;
+        let total_size = alloc_size
+            .checked_add(alignment_padding)
+            .ok_or(PageAllocationFailure::OutOfMemory)?;
+        let end = pool
+            .watermark
+            .checked_add(total_size)
+            .ok_or(PageAllocationFailure::OutOfMemory)?;
+
         if end > pool.size {
             return Err(PageAllocationFailure::OutOfMemory);
         }
 
-        let ptr = unsafe { pool.memory.as_ptr().add(pool.watermark) };
         pool.watermark = end;
         Ok(PageAllocation {
-            ptr: NonNull::new(ptr).unwrap(),
+            ptr: NonNull::new(aligned_addr as *mut u8).unwrap(),
             pages,
         })
     }
@@ -153,5 +191,125 @@ impl Drop for PageAllocation {
     fn drop(&mut self) {
         // In a real implementation, this would free the allocated pages.
         // Mock uses a bump allocator for now, so nothing to do here.
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Tests share the global pool and must run serially (--test-threads=1).
+
+    /// Initialize a fresh pool for testing.
+    fn init_test_pool(pool: &mut [u8]) {
+        let ptr = NonNull::new(pool.as_mut_ptr()).unwrap();
+        *MOCK_PAGE_POOL.lock() = Some(MockPagePool {
+            memory: ptr,
+            size: pool.len(),
+            watermark: 0,
+        });
+    }
+
+    #[test]
+    fn test_basic_allocation() {
+        let mut pool = [0u8; 16 * PAGE_SIZE];
+        init_test_pool(&mut pool);
+
+        let alloc = unsafe {
+            PageAllocation::new_uninit(PageAllocationConstraint::AnyAddress, (), 1, None)
+        };
+        assert!(alloc.is_ok());
+        let alloc = alloc.unwrap();
+        assert_eq!(alloc.pages(), 1);
+    }
+
+    #[test]
+    fn test_zeroed_allocation() {
+        let mut pool = [0xffu8; 16 * PAGE_SIZE];
+        init_test_pool(&mut pool);
+
+        let alloc = PageAllocation::new_zeroed(PageAllocationConstraint::AnyAddress, (), 1, None);
+        assert!(alloc.is_ok());
+        let alloc = alloc.unwrap();
+
+        // Verify all bytes are zero
+        assert!(alloc.as_u8_slice().iter().all(|&b| b == 0));
+    }
+
+    #[test]
+    fn test_alignment() {
+        let mut pool = [0u8; 64 * PAGE_SIZE];
+        init_test_pool(&mut pool);
+
+        // First allocation to move watermark
+        let _ = unsafe {
+            PageAllocation::new_uninit(PageAllocationConstraint::AnyAddress, (), 1, None)
+        };
+
+        // Request 64K alignment (16 pages)
+        let alloc = unsafe {
+            PageAllocation::new_uninit(PageAllocationConstraint::AnyAddress, (), 1, Some(64 * 1024))
+        };
+        assert!(alloc.is_ok());
+        let alloc = alloc.unwrap();
+
+        // Verify alignment
+        let addr = alloc.as_ptr() as usize;
+        assert_eq!(addr % (64 * 1024), 0, "allocation should be 64K aligned");
+    }
+
+    #[test]
+    fn test_out_of_memory() {
+        let mut pool = [0u8; PAGE_SIZE];
+        init_test_pool(&mut pool);
+
+        // Try to allocate more than the pool size
+        let alloc = unsafe {
+            PageAllocation::new_uninit(PageAllocationConstraint::AnyAddress, (), 2, None)
+        };
+        assert_eq!(alloc.err(), Some(PageAllocationFailure::OutOfMemory));
+    }
+
+    #[test]
+    fn test_invalid_alignment() {
+        let mut pool = [0u8; 16 * PAGE_SIZE];
+        init_test_pool(&mut pool);
+
+        // Alignment must be power of two
+        let alloc = unsafe {
+            PageAllocation::new_uninit(PageAllocationConstraint::AnyAddress, (), 1, Some(3))
+        };
+        assert_eq!(alloc.err(), Some(PageAllocationFailure::InvalidAlignment));
+    }
+
+    #[test]
+    fn test_alignment_too_large() {
+        let mut pool = [0u8; 16 * PAGE_SIZE];
+        init_test_pool(&mut pool);
+
+        // Alignment exceeds 4 MiB limit
+        let alloc = unsafe {
+            PageAllocation::new_uninit(
+                PageAllocationConstraint::AnyAddress,
+                (),
+                1,
+                Some(8 * 1024 * 1024),
+            )
+        };
+        assert_eq!(alloc.err(), Some(PageAllocationFailure::AlignmentTooLarge));
+    }
+
+    #[test]
+    fn test_unsupported_constraint() {
+        let mut pool = [0u8; 16 * PAGE_SIZE];
+        init_test_pool(&mut pool);
+
+        let alloc = unsafe {
+            PageAllocation::new_uninit(PageAllocationConstraint::MaxAddress(0x1000), (), 1, None)
+        };
+        assert_eq!(
+            alloc.err(),
+            Some(PageAllocationFailure::UnsupportedConstraint)
+        );
     }
 }

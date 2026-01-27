@@ -49,10 +49,11 @@ impl LaceLoadedImage {
     /// Loads an EFI image from the given byte slice.
     pub fn load(image: &[u8]) -> Result<Self, LaceLoadImageError> {
         let pe = peimage::parse_pe(image).map_err(LaceLoadImageError::PeError)?;
-        let mut pages = PageAllocation::new_zerod(
+        let mut pages = PageAllocation::new_zeroed(
             PageAllocationConstraint::AnyAddress,
             MemoryType::LOADER_CODE,
             page_count(pe.nt_hdrs.optional_header.size_of_image as usize),
+            None,
         )
         .map_err(LaceLoadImageError::MemoryAllocationError)?;
         pe.relocate_into(pages.as_u8_slice_mut())

@@ -49,6 +49,7 @@ pub unsafe fn install_dtb(dtb: &[u8]) -> Result<impl Drop, uefi::Error> {
             PageAllocationConstraint::AnyAddress,
             MemoryType::ACPI_RECLAIM,
             page_count(dtb.len()),
+            None,
             dtb,
         )?,
     };
