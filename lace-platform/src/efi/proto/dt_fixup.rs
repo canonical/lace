@@ -57,7 +57,7 @@ impl DtFixupProtocol {
         // Create buffer holding a copy of the dtb
         let mut buf = PageAllocation::new_init_prefix(
             PageAllocationConstraint::AnyAddress,
-            MemoryType::ACPI_RECLAIM,
+            Some(MemoryType::ACPI_RECLAIM),
             page_count(dtb.len()),
             None,
             dtb,
@@ -73,7 +73,7 @@ impl DtFixupProtocol {
                 // Reallocate with correct size
                 buf = PageAllocation::new_init_prefix(
                     PageAllocationConstraint::AnyAddress,
-                    MemoryType::ACPI_RECLAIM,
+                    Some(MemoryType::ACPI_RECLAIM),
                     page_count(*e.data()),
                     None,
                     dtb,

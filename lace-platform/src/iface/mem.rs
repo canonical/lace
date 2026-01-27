@@ -33,6 +33,7 @@ pub trait PageAllocationIface<Address>: Sized {
     /// The memory is uninitialized.
     ///
     /// # Parameters
+    /// - `memory_type`: Optional memory type. If `None`, uses the platform's default.
     /// - `alignment`: Optional alignment in bytes (must be a power of two).
     ///   If `None`, uses the platform's default alignment.
     ///
@@ -40,7 +41,7 @@ pub trait PageAllocationIface<Address>: Sized {
     /// The caller must ensure that the allocated memory is properly initialized before use.
     unsafe fn new_uninit(
         constraint: PageAllocationConstraint<Address>,
-        memory_type: Self::MemoryType,
+        memory_type: Option<Self::MemoryType>,
         pages: usize,
         alignment: Option<usize>,
     ) -> Result<Self, Self::Error>;
@@ -49,7 +50,7 @@ pub trait PageAllocationIface<Address>: Sized {
     /// The memory is zero-initialized.
     fn new_zeroed(
         constraint: PageAllocationConstraint<Address>,
-        memory_type: Self::MemoryType,
+        memory_type: Option<Self::MemoryType>,
         pages: usize,
         alignment: Option<usize>,
     ) -> Result<Self, Self::Error> {
@@ -69,7 +70,7 @@ pub trait PageAllocationIface<Address>: Sized {
     /// The first init.len() bytes are initialized from the `init` slice, the rest is zero-initialized.
     fn new_init_prefix(
         constraint: PageAllocationConstraint<Address>,
-        memory_type: Self::MemoryType,
+        memory_type: Option<Self::MemoryType>,
         pages: usize,
         alignment: Option<usize>,
         init: &[u8],

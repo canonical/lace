@@ -101,7 +101,7 @@ impl PageAllocationIface<Address> for PageAllocation {
 
     unsafe fn new_uninit(
         constraint: PageAllocationConstraint<Address>,
-        _memory_type: Self::MemoryType,
+        _memory_type: Option<Self::MemoryType>,
         pages: usize,
         alignment: Option<usize>,
     ) -> Result<Self, Self::Error> {
@@ -216,7 +216,7 @@ mod tests {
         init_test_pool(&mut pool);
 
         let alloc = unsafe {
-            PageAllocation::new_uninit(PageAllocationConstraint::AnyAddress, (), 1, None)
+            PageAllocation::new_uninit(PageAllocationConstraint::AnyAddress, None, 1, None)
         };
         assert!(alloc.is_ok());
         let alloc = alloc.unwrap();
@@ -228,7 +228,7 @@ mod tests {
         let mut pool = [0xffu8; 16 * PAGE_SIZE];
         init_test_pool(&mut pool);
 
-        let alloc = PageAllocation::new_zeroed(PageAllocationConstraint::AnyAddress, (), 1, None);
+        let alloc = PageAllocation::new_zeroed(PageAllocationConstraint::AnyAddress, None, 1, None);
         assert!(alloc.is_ok());
         let alloc = alloc.unwrap();
 
@@ -243,12 +243,17 @@ mod tests {
 
         // First allocation to move watermark
         let _ = unsafe {
-            PageAllocation::new_uninit(PageAllocationConstraint::AnyAddress, (), 1, None)
+            PageAllocation::new_uninit(PageAllocationConstraint::AnyAddress, None, 1, None)
         };
 
         // Request 64K alignment (16 pages)
         let alloc = unsafe {
-            PageAllocation::new_uninit(PageAllocationConstraint::AnyAddress, (), 1, Some(64 * 1024))
+            PageAllocation::new_uninit(
+                PageAllocationConstraint::AnyAddress,
+                None,
+                1,
+                Some(64 * 1024),
+            )
         };
         assert!(alloc.is_ok());
         let alloc = alloc.unwrap();
@@ -265,7 +270,7 @@ mod tests {
 
         // Try to allocate more than the pool size
         let alloc = unsafe {
-            PageAllocation::new_uninit(PageAllocationConstraint::AnyAddress, (), 2, None)
+            PageAllocation::new_uninit(PageAllocationConstraint::AnyAddress, None, 2, None)
         };
         assert_eq!(alloc.err(), Some(PageAllocationFailure::OutOfMemory));
     }
@@ -277,7 +282,7 @@ mod tests {
 
         // Alignment must be power of two
         let alloc = unsafe {
-            PageAllocation::new_uninit(PageAllocationConstraint::AnyAddress, (), 1, Some(3))
+            PageAllocation::new_uninit(PageAllocationConstraint::AnyAddress, None, 1, Some(3))
         };
         assert_eq!(alloc.err(), Some(PageAllocationFailure::InvalidAlignment));
     }
@@ -291,7 +296,7 @@ mod tests {
         let alloc = unsafe {
             PageAllocation::new_uninit(
                 PageAllocationConstraint::AnyAddress,
-                (),
+                None,
                 1,
                 Some(8 * 1024 * 1024),
             )
@@ -305,7 +310,7 @@ mod tests {
         init_test_pool(&mut pool);
 
         let alloc = unsafe {
-            PageAllocation::new_uninit(PageAllocationConstraint::MaxAddress(0x1000), (), 1, None)
+            PageAllocation::new_uninit(PageAllocationConstraint::MaxAddress(0x1000), None, 1, None)
         };
         assert_eq!(
             alloc.err(),

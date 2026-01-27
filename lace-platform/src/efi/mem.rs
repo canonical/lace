@@ -52,7 +52,7 @@ impl PageAllocationIface<Address> for PageAllocation {
 
     unsafe fn new_uninit(
         constraint: PageAllocationConstraint<Address>,
-        memory_type: MemoryType,
+        memory_type: Option<MemoryType>,
         pages: usize,
         alignment: Option<usize>,
     ) -> Result<Self, uefi::Error> {
@@ -63,6 +63,7 @@ impl PageAllocationIface<Address> for PageAllocation {
         {
             return Err(uefi::Error::new(uefi::Status::UNSUPPORTED, ()));
         }
+        let memory_type = memory_type.unwrap_or(MemoryType::LOADER_DATA);
         let ptr = uefi::boot::allocate_pages(constraint.into(), memory_type, pages)?;
         Ok(PageAllocation { ptr, pages })
     }

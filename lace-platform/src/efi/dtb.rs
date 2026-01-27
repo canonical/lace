@@ -47,7 +47,7 @@ pub unsafe fn install_dtb(dtb: &[u8]) -> Result<impl Drop, uefi::Error> {
         Ok(mut proto) => proto.fixup_owned(dtb)?,
         Err(_) => PageAllocation::new_init_prefix(
             PageAllocationConstraint::AnyAddress,
-            MemoryType::ACPI_RECLAIM,
+            Some(MemoryType::ACPI_RECLAIM),
             page_count(dtb.len()),
             None,
             dtb,
