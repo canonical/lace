@@ -5,7 +5,7 @@
 
 use spin::Mutex;
 
-use crate::iface::mem::{PageAllocationConstraint, PageAllocationIface};
+use crate::iface::mem::{MemAttributes, PageAllocationConstraint, PageAllocationIface};
 use core::ptr::NonNull;
 
 /// Address type for the sandbox platform.
@@ -192,6 +192,18 @@ impl Drop for PageAllocation {
         // In a real implementation, this would free the allocated pages.
         // Mock uses a bump allocator for now, so nothing to do here.
     }
+}
+
+pub fn change_mem_attrs(
+    _addr_range: core::ops::Range<u64>,
+    _attrs: MemAttributes,
+) -> Result<(), crate::Error> {
+    // No-op in the mock platform.
+    Ok(())
+}
+
+pub fn nx_required() -> bool {
+    false
 }
 
 #[cfg(test)]

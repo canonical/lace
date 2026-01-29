@@ -115,3 +115,26 @@ pub trait PageAllocationIface<Address>: Sized {
     /// Returns a mutable slice to the allocated memory.
     fn as_u8_slice_mut(&mut self) -> &mut [u8];
 }
+
+bitflags::bitflags! {
+    /// Memory attributes for memory protection.
+    ///
+    /// Platforms should provide the following functions in their mem module:
+    ///
+    /// ```ignore
+    /// pub fn change_mem_attrs(addr_range: core::ops::Range<u64>, attrs: MemAttributes) -> Result<(), Error> { ... }
+    /// ```
+    ///
+    /// ```ignore
+    /// pub fn nx_required() -> bool { ... }
+    /// ```
+    ///
+    /// Not implementing memory attributes is allowed, in which case `change_mem_attrs` can be a no-op,
+    /// and `nx_required` can return false.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct MemAttributes: u32 {
+        const READ_PROTECT = 0x1;
+        const WRITE_PROTECT = 0x2;
+        const EXECUTE_PROTECT = 0x4;
+    }
+}

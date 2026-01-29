@@ -106,6 +106,9 @@ pub struct OptionalHeader64 {
     // pub data_directory: [DataDirectory; NUMBER_OF_DIRECTORY_ENTRIES],
 }
 
+/// DLL Characteristics flags
+pub const DLLCHARACTERISTICS_NX_COMPAT: u16 = 0x0100;
+
 #[repr(C)]
 #[derive(Clone, Debug, FromBytes, IntoBytes, Immutable, KnownLayout)]
 pub struct NtHeaders64 {

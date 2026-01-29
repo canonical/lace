@@ -104,6 +104,7 @@ pub fn find_smbios_tables() -> Option<(&'static [u8], &'static [u8])> {
 #[uefi::entry]
 fn efi_main() -> uefi::Status {
     uefi::helpers::init().unwrap();
+    mem::efi_mem_init();
 
     unsafe extern "Rust" {
         fn main() -> Result<(), Error>;
