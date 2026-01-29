@@ -92,6 +92,18 @@ fn main() {
 
                         // Set stubble PE major version to 1 to indicate LoadFile2 initrd support
                         bld.nt_hdrs.optional_header.major_image_version = 1;
+
+                        // Set stubble NX_COMPAT based on kernel NX_COMPAT
+                        let kernel_nx_compat = (pe.nt_hdrs.optional_header.dll_characteristics
+                            & peimage::DLLCHARACTERISTICS_NX_COMPAT)
+                            != 0;
+                        if kernel_nx_compat {
+                            bld.nt_hdrs.optional_header.dll_characteristics |=
+                                peimage::DLLCHARACTERISTICS_NX_COMPAT;
+                        } else {
+                            bld.nt_hdrs.optional_header.dll_characteristics &=
+                                !peimage::DLLCHARACTERISTICS_NX_COMPAT;
+                        }
                     }
                     Err(e) => {
                         eprintln!("{}: invalid Linux kernel PE image: {}", path.display(), e);
