@@ -7,12 +7,13 @@
 
 extern crate alloc;
 
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 use core::fmt::Display;
 use lace_platform::debugln;
 use lace_platform::dtb::install_dtb;
 use lace_platform::linux::boot_linux;
 use lace_util::peimage::{PeError, SectionHeader, parse_pe};
+use uefi::proto::tcg::v2::PcrEventInputs;
 
 /// Errors that can occur when booting a Stubble image.
 #[derive(Clone, Copy, Debug)]
@@ -145,6 +146,37 @@ pub fn boot_stubble_image<'image>(
         }
     } else {
         debugln!("No platform compatible determined, skipping DTB installation");
+    }
+
+    // Measure command line to TPM 2.0 - PCR 12
+    use uefi::proto::tcg;
+    if let Ok(mut tcg2) = lace_platform::efi::open_protocol_exclusive::<tcg::v2::Tcg>() {
+        let cmdline = cmdline.unwrap_or_default();
+        // Prepare buffer for event
+        // Unfortunately the exact size of PcrEventInputs header is not exposed,
+        // so we allocate a bit more than needed.
+        let mut event_buf = vec![0u8; 64 + cmdline.len()];
+        let _ = PcrEventInputs::new_in_buffer(
+            &mut event_buf,
+            // Kernel command line is measured into PCR 12,
+            // see https://uapi-group.org/specifications/specs/linux_tpm_pcr_registry
+            tcg::PcrIndex(12),
+            tcg::EventType::IPL,
+            cmdline.as_bytes(),
+        )
+        .map_err(|err| err.to_err_without_payload())
+        .and_then(|event| {
+            tcg2.hash_log_extend_event(
+                tcg::v2::HashLogExtendEventFlags::empty(),
+                cmdline.as_bytes(),
+                event,
+            )
+        })
+        .inspect_err(|err| {
+            debugln!("Failed to measure kernel command line: {}", err);
+        });
+    } else {
+        debugln!("TPM 2.0 TCG protocol not available, skipping command line measurement");
     }
 
     // Boot the kernel

@@ -10,6 +10,7 @@ import os
 import platform
 import shutil
 import subprocess
+import time
 import guestfs
 import pefile
 import requests
@@ -302,16 +303,14 @@ def build_and_inject_stubble(args, config):
         dtbauto_idx = 0
         for section in pe.sections:
             if section.Name.rstrip(b"\x00") == b".linux":
-                with open(os.path.join(args.dir, "vmlinuz-really"), "wb") as vmlinuz_really:
-                    vmlinuz_really.write(
-                        section.get_data()
-                    )
+                with open(
+                    os.path.join(args.dir, "vmlinuz-really"), "wb"
+                ) as vmlinuz_really:
+                    vmlinuz_really.write(section.get_data())
             elif section.Name.rstrip(b"\x00") == b".dtbauto":
                 dtbauto_path = os.path.join(args.dir, f"dtbauto-{dtbauto_idx}")
                 with open(dtbauto_path, "wb") as dtbauto_file:
-                    dtbauto_file.write(
-                        section.get_data()
-                    )
+                    dtbauto_file.write(section.get_data())
                 dtbauto_files.append(dtbauto_path)
                 dtbauto_idx += 1
         shutil.move(
@@ -372,97 +371,165 @@ def do_start(args):
     # Build and inject lace-stubble
     build_and_inject_stubble(args, config)
 
-    # Check for acpi disable on ARM64
-    acpi_flag = ""
-    if config["arch"] == "aarch64" and config.get("acpi") == "off":
-        acpi_flag = ",acpi=off"
+    # Start swtpm if requested
+    swtpm_proc = None
+    tpm_sock = None
+    if config.get("tpm"):
+        if not shutil.which("swtpm"):
+            raise RuntimeError("swtpm not found")
 
-    # Construct QEMU command
-    qemu_cmd = [
-        "qemu-system-" + config["arch"],
-        "-nographic",
-        "-machine",
-        f"{config['machine']},accel={best_vm_accel(config['arch'])}{acpi_flag}",
-        "-cpu",
-        config["cpu"]["model"],
-        "-smp",
-        f"cores={config['cpu']['cores']}",
-        "-m",
-        config["ram"],
-        "-drive",
-        "if=pflash,unit=0,format=raw,readonly=on,file="
-        + os.path.join(args.dir, config["fw"]["code"]),
-        "-drive",
-        "if=pflash,unit=1,format=raw,file="
-        + os.path.join(args.dir, config["fw"]["vars"]),
-        "-drive",
-        f"if=none,id=disk,format={config['disk']['format']},file="
-        + os.path.join(args.dir, config["disk"]["file"]),
-        "-device",
-        "virtio-blk-pci,drive=disk,bootindex=1",
-    ]
+        tpm_dir = os.path.join(args.dir, "tpm")
+        os.makedirs(tpm_dir, exist_ok=True)
+        tpm_sock = os.path.join(tpm_dir, "swtpm-sock")
 
-    # Add SMBIOS table to QEMU command
-    if "smbios" in config:
-        qemu_cmd.extend(["-smbios", "file=" + os.path.join(args.dir, config["smbios"])])
+        # Clean up stale socket
+        if os.path.exists(tpm_sock):
+            os.remove(tpm_sock)
 
-    # Install EDID file using fakeedid.efi in a vvfat drive
-    if "edid" in config:
-        # Build fakeedid.efi
-        subprocess.run(
-            [
-                "cargo",
-                "build",
-                "-p",
-                "fakeedid",
-                "--target",
-                f"{config['arch']}-unknown-uefi",
-            ],
-            check=True,
-        )
-        # Create EDID drive
-        edid_drive = os.path.join(args.dir, "edid_drive")
-        os.makedirs(os.path.join(edid_drive, "EFI", "BOOT"), exist_ok=True)
-        shutil.copyfile(
-            os.path.join(
-                "target",
-                f"{config['arch']}-unknown-uefi",
-                "debug",
-                "fakeedid.efi",
-            ),
-            os.path.join(
-                edid_drive, "EFI", "BOOT", f"BOOT{EFI_SUFFIXES[config['arch']]}"
-            ),
-        )
-        shutil.copyfile(
-            os.path.join(args.dir, config["edid"]), os.path.join(edid_drive, "edid.bin")
-        )
-        qemu_cmd.extend(
-            [
-                "-drive",
-                f"file=fat:rw:{edid_drive},format=raw,if=none,id=edid_drive",
-                "-device",
-                "virtio-blk-pci,drive=edid_drive,bootindex=0",
-            ]
-        )
+        swtpm_cmd = [
+            "swtpm",
+            "socket",
+            "--tpmstate",
+            f"dir={tpm_dir}",
+            "--ctrl",
+            f"type=unixio,path={tpm_sock}",
+            "--tpm2",
+            "--log",
+            "level=0",
+        ]
+        print(f"Starting swtpm...")
+        swtpm_proc = subprocess.Popen(swtpm_cmd)
 
-    # Add cloud-init seed on first boot
-    if not os.path.exists(os.path.join(args.dir, "cloud-init-seed.img")):
-        cloud_init_iso_path = os.path.join(args.dir, "cloud-init-seed.img")
-        with open(os.path.join(args.dir, "user-data"), "w", encoding="utf-8") as file:
-            file.write(CI_USER_DATA)
-        subprocess.run(
-            [
-                "cloud-localds",
-                cloud_init_iso_path,
-                os.path.join(args.dir, "user-data"),
-            ],
-            check=True,
-        )
-        qemu_cmd.extend(["-drive", f"file={cloud_init_iso_path},format=raw,if=virtio"])
+        # Wait for socket
+        retries = 50
+        while not os.path.exists(tpm_sock) and retries > 0:
+            time.sleep(0.1)
+            retries -= 1
 
-    # Start the VM
-    subprocess.run(qemu_cmd, check=True)
+        if not os.path.exists(tpm_sock):
+            if swtpm_proc.poll() is not None:
+                raise RuntimeError("swtpm exited unexpectedly")
+            raise RuntimeError("Timed out waiting for swtpm socket")
+
+    try:
+        # Check for acpi disable on ARM64
+        acpi_flag = ""
+        if config["arch"] == "aarch64" and config.get("acpi") == "off":
+            acpi_flag = ",acpi=off"
+
+        # Construct QEMU command
+        qemu_cmd = [
+            "qemu-system-" + config["arch"],
+            "-nographic",
+            "-machine",
+            f"{config['machine']},accel={best_vm_accel(config['arch'])}{acpi_flag}",
+            "-cpu",
+            config["cpu"]["model"],
+            "-smp",
+            f"cores={config['cpu']['cores']}",
+            "-m",
+            config["ram"],
+            "-drive",
+            "if=pflash,unit=0,format=raw,readonly=on,file="
+            + os.path.join(args.dir, config["fw"]["code"]),
+            "-drive",
+            "if=pflash,unit=1,format=raw,file="
+            + os.path.join(args.dir, config["fw"]["vars"]),
+            "-drive",
+            f"if=none,id=disk,format={config['disk']['format']},file="
+            + os.path.join(args.dir, config["disk"]["file"]),
+            "-device",
+            "virtio-blk-pci,drive=disk,bootindex=1",
+        ]
+
+        # Add TPM if requested
+        if config.get("tpm"):
+            tpm_dev = "tpm-tis-device" if config["arch"] == "aarch64" else "tpm-tis"
+            qemu_cmd.extend(
+                [
+                    "-chardev",
+                    f"socket,id=chrtpm,path={tpm_sock}",
+                    "-tpmdev",
+                    "emulator,id=tpm0,chardev=chrtpm",
+                    "-device",
+                    f"{tpm_dev},tpmdev=tpm0",
+                ]
+            )
+
+        # Add SMBIOS table to QEMU command
+        if "smbios" in config:
+            qemu_cmd.extend(
+                ["-smbios", "file=" + os.path.join(args.dir, config["smbios"])]
+            )
+
+        # Install EDID file using fakeedid.efi in a vvfat drive
+        if "edid" in config:
+            # Build fakeedid.efi
+            subprocess.run(
+                [
+                    "cargo",
+                    "build",
+                    "-p",
+                    "fakeedid",
+                    "--target",
+                    f"{config['arch']}-unknown-uefi",
+                ],
+                check=True,
+            )
+            # Create EDID drive
+            edid_drive = os.path.join(args.dir, "edid_drive")
+            os.makedirs(os.path.join(edid_drive, "EFI", "BOOT"), exist_ok=True)
+            shutil.copyfile(
+                os.path.join(
+                    "target",
+                    f"{config['arch']}-unknown-uefi",
+                    "debug",
+                    "fakeedid.efi",
+                ),
+                os.path.join(
+                    edid_drive, "EFI", "BOOT", f"BOOT{EFI_SUFFIXES[config['arch']]}"
+                ),
+            )
+            shutil.copyfile(
+                os.path.join(args.dir, config["edid"]),
+                os.path.join(edid_drive, "edid.bin"),
+            )
+            qemu_cmd.extend(
+                [
+                    "-drive",
+                    f"file=fat:rw:{edid_drive},format=raw,if=none,id=edid_drive",
+                    "-device",
+                    "virtio-blk-pci,drive=edid_drive,bootindex=0",
+                ]
+            )
+
+        # Add cloud-init seed on first boot
+        if not os.path.exists(os.path.join(args.dir, "cloud-init-seed.img")):
+            cloud_init_iso_path = os.path.join(args.dir, "cloud-init-seed.img")
+            with open(
+                os.path.join(args.dir, "user-data"), "w", encoding="utf-8"
+            ) as file:
+                file.write(CI_USER_DATA)
+            subprocess.run(
+                [
+                    "cloud-localds",
+                    cloud_init_iso_path,
+                    os.path.join(args.dir, "user-data"),
+                ],
+                check=True,
+            )
+            qemu_cmd.extend(
+                ["-drive", f"file={cloud_init_iso_path},format=raw,if=virtio"]
+            )
+
+        # Start the VM
+        subprocess.run(qemu_cmd, check=True)
+
+    finally:
+        if swtpm_proc:
+            print("Terminating swtpm...")
+            swtpm_proc.terminate()
+            swtpm_proc.wait()
 
 
 def main():
