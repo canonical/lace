@@ -6,7 +6,7 @@ edition = "2024"
 license = "GPL-2.0-only OR GPL-3.0-only"
 
 [dependencies]
-clap = { version = "4.5.53", features = ["derive"] }
+clap = { version = "4.5.56", features = ["derive"] }
 clap_mangen = "0.2"
 
 # Tool dependencies for generating man pages
