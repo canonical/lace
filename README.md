@@ -22,3 +22,6 @@ You may want to use development tools:
 * `scripts/cargo_ci.py` - A wrapper around cargo avoiding feature unification
 * `scripts/vm_manage.py` - a helper tool to setup and run test VMs
 * `tools/fakeedid` - a helper tool to fake some EDID data in a test VM
+
+# Discussions
+Feel free to join our Matrix channel: https://matrix.to/#/#lace:ubuntu.com
