@@ -4,7 +4,7 @@ Lace is a framework for writing boot applications.
 
 The current list of applications is:
 
-* `lace-stubble` - a"stub" EFI binary that can be specialized into a bootable image by embedding resources (kernel, initrd, etc.) into PE sections.
+* `lace-stubble` - a "stub" EFI binary that can be specialized into a bootable image by embedding resources (kernel, initrd, etc.) into PE sections.
 * `tools/pewrap` - a tool to wrap assets into a stubble image
 * `tools/collect-hwids` - a helper tool to collect hwids from a running laptop
 
