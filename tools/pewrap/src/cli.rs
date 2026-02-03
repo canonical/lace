@@ -97,6 +97,9 @@ pub struct Args {
     /// This option instructs pewrap to relayout the image by setting SizeOfHeaders
     /// to as large as possible, maximizing the number of sections that can be added by
     /// systemd-ukify later on.
+    ///
+    /// Additionally it sets the PE major version to 1, which is also required by ukify,
+    /// otherwise it will never indicate support for LoadFile2.
     #[arg(long)]
     pub post_process_for_ukify: bool,
 }

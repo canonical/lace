@@ -168,6 +168,13 @@ fn main() {
         );
     }
 
+    // If we are called with --post-process-for-ukify, set PE major version to 1 for LoadFile2
+    // We set this above only if the Linux kernel supports it, but ukify never sets it itself,
+    // so we need to set it here unconditionally.
+    if args.post_process_for_ukify {
+        bld.nt_hdrs.optional_header.major_image_version = 1;
+    }
+
     // Calculate section offsets
     if let Err(e) = bld.fixup_offsets(args.post_process_for_ukify) {
         eprintln!("{}: {}", args.output.display(), e);
