@@ -9,7 +9,7 @@
 extern crate alloc;
 
 use alloc::string::String;
-use lace_platform::{Error, entry, println};
+use lace_platform::{Error, debugln, entry};
 
 #[entry]
 fn main() -> Result<(), Error> {
@@ -27,17 +27,23 @@ fn main() -> Result<(), Error> {
     };
 
     // Get external cmdline if any
-    let external_cmdline: Option<String> = match li.load_options_as_cstr16() {
-        Ok(cstr16) => Some(
-            core::char::decode_utf16(cstr16.to_u16_slice().iter().cloned())
-                .map(|r| r.unwrap_or(core::char::REPLACEMENT_CHARACTER))
-                .collect(),
-        ),
-        Err(uefi::proto::loaded_image::LoadOptionsError::NotSet) => None,
-        Err(e) => {
-            println!("Invalid load options: {:?}", e);
-            None
+    let external_cmdline: Option<String> = match li.load_options_as_bytes() {
+        Some(bytes) => {
+            let s: String = core::char::decode_utf16(
+                bytes
+                    .chunks(2)
+                    .map(|chunk| u16::from_ne_bytes([chunk[0], chunk[1]])),
+            )
+            .map(|r| {
+                r.unwrap_or_else(|err| {
+                    debugln!("WARNING: command line contains invalid character: {}", err);
+                    core::char::REPLACEMENT_CHARACTER
+                })
+            })
+            .collect();
+            Some(s)
         }
+        None => None,
     };
 
     // Boot the stubble image
