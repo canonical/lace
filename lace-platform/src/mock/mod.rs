@@ -9,6 +9,7 @@ use core::{fmt, ops::Deref};
 
 pub mod mem;
 
+#[derive(Debug)]
 pub struct Error;
 
 pub fn print_impl(args: fmt::Arguments<'_>) {
@@ -47,18 +48,22 @@ pub mod dtb {
         todo!()
     }
 
-    pub fn install_dtb(_dtb: &[u8]) -> Result<(), super::Error> {
+    /// Installs a DTB in the system.
+    /// # Safety
+    /// This is not implemented for now.
+    pub unsafe fn install_dtb(_dtb: &[u8]) -> Result<(), super::Error> {
         todo!()
     }
 }
 
 pub mod linux {
+    #[derive(Debug)]
     pub struct BootLinuxError;
 
     pub fn boot_linux(
         _kernel: &[u8],
         _initrd: Option<&[u8]>,
-        _cmdline: &str,
+        _cmdline: Option<&str>,
     ) -> Result<(), BootLinuxError> {
         todo!()
     }
