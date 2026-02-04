@@ -19,6 +19,7 @@ use uefi::proto::tcg::v2::PcrEventInputs;
 #[derive(Clone, Copy, Debug)]
 pub enum BootStubbleError {
     PeError(PeError),
+    DuplicateSection(&'static str),
     NotAStubbleImage,
     InvalidCommandLine,
 }
@@ -27,6 +28,9 @@ impl Display for BootStubbleError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             BootStubbleError::PeError(e) => write!(f, "PE parsing error: {}", e),
+            BootStubbleError::DuplicateSection(name) => {
+                write!(f, "Duplicate section in Stubble image: {}", name)
+            }
             BootStubbleError::NotAStubbleImage => write!(f, "Not a Stubble image"),
             BootStubbleError::InvalidCommandLine => write!(f, "Invalid command line encoding"),
         }
@@ -40,12 +44,12 @@ pub enum StubbleImage<'a> {
 }
 
 /// Boots a Stubble image with an optional initrd and command line.
-/// The initrd and command line will only be used if the Stubble image does not
+/// The external_initrd and external_cmdline will only be used if the Stubble image does not
 /// contain corresponding sections (.initrd and .cmdline).
 pub fn boot_stubble_image<'image>(
     stubble_image: StubbleImage<'image>,
-    initrd: Option<&[u8]>,
-    cmdline: Option<&str>,
+    external_initrd: Option<&[u8]>,
+    external_cmdline: Option<&str>,
 ) -> Result<(), BootStubbleError> {
     // Parse image
     let (data, raw) = match stubble_image {
@@ -56,8 +60,8 @@ pub fn boot_stubble_image<'image>(
 
     // Parsed sections/data
     let mut kernel = None;
-    let mut initrd = initrd;
-    let mut cmdline = cmdline;
+    let mut initrd = None;
+    let mut cmdline = None;
     let mut hwids = None;
     let mut dtbauto: Vec<&[u8]> = Vec::new();
 
@@ -73,15 +77,26 @@ pub fn boot_stubble_image<'image>(
             );
 
             match sect.name() {
-                b".linux" => kernel = Some(data),
-                b".initrd" => initrd = Some(data),
+                b".linux" => kernel.insert_once_or_error(
+                    data,
+                    BootStubbleError::DuplicateSection(".linux"),
+                )?,
+                b".initrd" => initrd.insert_once_or_error(
+                    data,
+                    BootStubbleError::DuplicateSection(".initrd"),
+                )?,
                 b".cmdline" => {
-                    cmdline = Some(
-                        core::str::from_utf8(data)
-                            .map_err(|_| BootStubbleError::InvalidCommandLine)?,
-                    )
+                    let cmdline_str = core::str::from_utf8(data)
+                        .map_err(|_| BootStubbleError::InvalidCommandLine)?;
+                    cmdline.insert_once_or_error(
+                        cmdline_str,
+                        BootStubbleError::DuplicateSection(".cmdline"),
+                    )?
                 }
-                b".hwids" => hwids = Some(data),
+                b".hwids" => hwids.insert_once_or_error(
+                    data,
+                    BootStubbleError::DuplicateSection(".hwids"),
+                )?,
                 b".dtbauto" => dtbauto.push(data),
                 _ => {}
             }
@@ -93,6 +108,14 @@ pub fn boot_stubble_image<'image>(
         pe.raw_sections().try_for_each(section_filter)?;
     } else {
         pe.virtual_sections().try_for_each(section_filter)?;
+    }
+
+    // Use external initrd and/or cmdline if not present in image
+    if let (Some(external_cmdline), true) = (external_cmdline, cmdline.is_none()) {
+        cmdline = Some(external_cmdline);
+    }
+    if let (Some(external_initrd), true) = (external_initrd, initrd.is_none()) {
+        initrd = Some(external_initrd);
     }
 
     // Ensure kernel is present
@@ -183,4 +206,22 @@ pub fn boot_stubble_image<'image>(
     boot_linux(kernel, initrd, cmdline).expect("failed to start linux");
 
     unreachable!()
+}
+
+/// Extension trait to insert a value into an Option only if it is None,
+/// otherwise return an error.
+trait InsertOnce<T, E> {
+    /// Inserts the value if the Option is None, otherwise returns the provided error.
+    fn insert_once_or_error(&mut self, value: T, err: E) -> Result<(), E>;
+}
+
+impl<T, E> InsertOnce<T, E> for Option<T> {
+    fn insert_once_or_error(&mut self, value: T, err: E) -> Result<(), E> {
+        if self.is_some() {
+            Err(err)
+        } else {
+            *self = Some(value);
+            Ok(())
+        }
+    }
 }
