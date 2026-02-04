@@ -7,13 +7,12 @@
 
 extern crate alloc;
 
-use alloc::{vec, vec::Vec};
+use alloc::vec::Vec;
 use core::fmt::Display;
 use lace_platform::debugln;
 use lace_platform::dtb::install_dtb;
 use lace_platform::linux::boot_linux;
 use lace_util::peimage::{PeError, SectionHeader, parse_pe};
-use uefi::proto::tcg::v2::PcrEventInputs;
 
 /// Errors that can occur when booting a Stubble image.
 #[derive(Clone, Copy, Debug)]
@@ -77,14 +76,10 @@ pub fn boot_stubble_image<'image>(
             );
 
             match sect.name() {
-                b".linux" => kernel.insert_once_or_error(
-                    data,
-                    BootStubbleError::DuplicateSection(".linux"),
-                )?,
-                b".initrd" => initrd.insert_once_or_error(
-                    data,
-                    BootStubbleError::DuplicateSection(".initrd"),
-                )?,
+                b".linux" => kernel
+                    .insert_once_or_error(data, BootStubbleError::DuplicateSection(".linux"))?,
+                b".initrd" => initrd
+                    .insert_once_or_error(data, BootStubbleError::DuplicateSection(".initrd"))?,
                 b".cmdline" => {
                     let cmdline_str = core::str::from_utf8(data)
                         .map_err(|_| BootStubbleError::InvalidCommandLine)?;
@@ -93,10 +88,8 @@ pub fn boot_stubble_image<'image>(
                         BootStubbleError::DuplicateSection(".cmdline"),
                     )?
                 }
-                b".hwids" => hwids.insert_once_or_error(
-                    data,
-                    BootStubbleError::DuplicateSection(".hwids"),
-                )?,
+                b".hwids" => hwids
+                    .insert_once_or_error(data, BootStubbleError::DuplicateSection(".hwids"))?,
                 b".dtbauto" => dtbauto.push(data),
                 _ => {}
             }
@@ -178,8 +171,8 @@ pub fn boot_stubble_image<'image>(
         // Prepare buffer for event
         // Unfortunately the exact size of PcrEventInputs header is not exposed,
         // so we allocate a bit more than needed.
-        let mut event_buf = vec![0u8; 64 + cmdline.len()];
-        let _ = PcrEventInputs::new_in_buffer(
+        let mut event_buf = alloc::vec![0u8; 64 + cmdline.len()];
+        let _ = tcg::v2::PcrEventInputs::new_in_buffer(
             &mut event_buf,
             // Kernel command line is measured into PCR 12,
             // see https://uapi-group.org/specifications/specs/linux_tpm_pcr_registry

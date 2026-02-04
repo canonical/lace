@@ -3,15 +3,15 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 // UEFI main application
 
-#![no_main]
-#![no_std]
+#![cfg_attr(target_os = "uefi", no_main)]
+#![cfg_attr(target_os = "uefi", no_std)]
 
 extern crate alloc;
 
 use alloc::string::String;
-use lace_platform::{Error, debugln, entry};
+use lace_platform::{Error, debugln};
 
-#[entry]
+#[cfg_attr(target_os = "uefi", lace_platform::entry)]
 fn main() -> Result<(), Error> {
     // Parse own loaded image
     let li = uefi::boot::open_protocol_exclusive::<uefi::proto::loaded_image::LoadedImage>(
