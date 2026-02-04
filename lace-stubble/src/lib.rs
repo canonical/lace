@@ -218,3 +218,41 @@ impl<T, E> InsertOnce<T, E> for Option<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_insert_once_success() {
+        let mut opt: Option<i32> = None;
+        let result = opt.insert_once_or_error(42, "error");
+        assert_eq!(result, Ok(()));
+        assert_eq!(opt, Some(42));
+    }
+
+    #[test]
+    fn test_insert_once_duplicate_error() {
+        let mut opt: Option<i32> = Some(10);
+        let result = opt.insert_once_or_error(42, "duplicate");
+        assert_eq!(result, Err("duplicate"));
+        assert_eq!(opt, Some(10)); // Original value should be preserved
+    }
+
+    #[test]
+    fn test_insert_once_with_string() {
+        let mut opt: Option<&str> = None;
+        let result = opt.insert_once_or_error("hello", "error");
+        assert_eq!(result, Ok(()));
+        assert_eq!(opt, Some("hello"));
+    }
+
+    #[test]
+    fn test_insert_once_with_slice() {
+        let mut opt: Option<&[u8]> = None;
+        let data: &[u8] = &[1, 2, 3];
+        let result = opt.insert_once_or_error(data, "error");
+        assert_eq!(result, Ok(()));
+        assert_eq!(opt, Some(data));
+    }
+}
