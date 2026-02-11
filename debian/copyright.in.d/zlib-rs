@@ -1,0 +1,15 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/zlib-rs ***
+
+Files: rust-vendor/zlib-rs/*
+License: Zlib
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/zlib-rs/LICENSE
+
+Files: rust-vendor/zlib-rs/LICENSE
+Copyright: 2024, Trifecta Tech Foundation
+License: Zlib
+
+License: Zlib
+Comment: Add the corresponding license text here

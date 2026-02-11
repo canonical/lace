@@ -1,0 +1,3 @@
+Files: rust-vendor/libc/*
+Copyright: 2014-2020, The Rust Project Developers
+License: Apache-2 or Expat

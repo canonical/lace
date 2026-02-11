@@ -1,0 +1,22 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/hashbrown ***
+
+Files: rust-vendor/hashbrown/*
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/hashbrown/LICENSE-APACHE
+ rust-vendor/hashbrown/LICENSE-MIT
+
+Files: rust-vendor/hashbrown/LICENSE-MIT
+Copyright: 2016, Amanieu d'Antras
+License: Expat
+
+Files: rust-vendor/hashbrown/LICENSE-APACHE
+License: Apache-2
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

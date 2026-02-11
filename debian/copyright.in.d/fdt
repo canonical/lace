@@ -1,0 +1,15 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/fdt ***
+
+Files: rust-vendor/fdt/*
+License: MPL-2
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/fdt/LICENSE
+
+Files: rust-vendor/fdt/LICENSE
+       rust-vendor/fdt/src/*
+License: MPL-2
+
+License: MPL-2
+Comment: Add the corresponding license text here

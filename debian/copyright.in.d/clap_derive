@@ -1,0 +1,26 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/clap_derive ***
+
+Files: rust-vendor/clap_derive/*
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/clap_derive/LICENSE-APACHE
+ rust-vendor/clap_derive/LICENSE-MIT
+
+Files: rust-vendor/clap_derive/LICENSE-APACHE
+       rust-vendor/clap_derive/src/derives/*
+       rust-vendor/clap_derive/src/item.rs
+       rust-vendor/clap_derive/src/lib.rs
+Copyright: 2018, Guillaume Pinot (@TeXitoi) <texitoi@texitoi.eu>
+License: Apache-2
+
+Files: rust-vendor/clap_derive/LICENSE-MIT
+Copyright: Individual contributors
+License: Expat
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

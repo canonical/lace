@@ -1,0 +1,5 @@
+Files: rust-vendor/simd-adler32/*
+Copyright: unspecified
+License: Expat
+Comment:
+ This crate is empty

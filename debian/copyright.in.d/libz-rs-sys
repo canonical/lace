@@ -1,0 +1,19 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/libz-rs-sys ***
+
+Files: rust-vendor/libz-rs-sys/*
+License: Zlib
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/libz-rs-sys/LICENSE
+
+Files: rust-vendor/libz-rs-sys/LICENSE
+       rust-vendor/libz-rs-sys/include/zconf.h
+       rust-vendor/libz-rs-sys/include/zlib.h
+Copyright: 1995-2024, Jean-loup Gailly and Mark Adler
+           1995-2024, Jean-loup Gailly, Mark Adler
+           2024, Trifecta Tech Foundation
+License: Zlib
+
+License: Zlib
+Comment: Add the corresponding license text here

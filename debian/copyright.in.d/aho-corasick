@@ -1,0 +1,22 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/aho-corasick ***
+
+Files: rust-vendor/aho-corasick/*
+License: Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/aho-corasick/LICENSE-MIT
+
+Files: rust-vendor/aho-corasick/LICENSE-MIT
+Copyright: 2015, Andrew Gallant
+License: Expat
+
+Files: rust-vendor/aho-corasick/UNLICENSE
+Copyright: laws, the author or authors
+License: Unlicense
+
+License: Expat
+Comment: Add the corresponding license text here
+
+License: Unlicense
+Comment: Add the corresponding license text here

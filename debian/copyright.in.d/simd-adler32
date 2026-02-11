@@ -1,0 +1,6 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/simd-adler32 ***
+
+Files: rust-vendor/simd-adler32/*
+License: Unknown

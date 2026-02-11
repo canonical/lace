@@ -1,0 +1,3 @@
+Files: rust-vendor/bitflags/*
+Copyright: 2014, The Rust Project Developers. See the COPYRIGHT
+License: Apache-2 or Expat

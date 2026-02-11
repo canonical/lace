@@ -1,0 +1,23 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/clap ***
+
+Files: rust-vendor/clap/*
+Copyright: 2015-2016, Kevin B. Knapp and [`clap-rs` contributors](https://github.com/clap-rs/clap/graphs/contributors)
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/clap/LICENSE-APACHE
+ rust-vendor/clap/LICENSE-MIT
+
+Files: rust-vendor/clap/LICENSE-MIT
+Copyright: Individual contributors
+License: Expat
+
+Files: rust-vendor/clap/LICENSE-APACHE
+License: Apache-2
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

@@ -1,0 +1,22 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/cfg-if ***
+
+Files: rust-vendor/cfg-if/*
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/cfg-if/LICENSE-APACHE
+ rust-vendor/cfg-if/LICENSE-MIT
+
+Files: rust-vendor/cfg-if/LICENSE-MIT
+Copyright: 2014, Alex Crichton
+License: Expat
+
+Files: rust-vendor/cfg-if/LICENSE-APACHE
+License: Apache-2
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

@@ -1,0 +1,3 @@
+Files: rust-vendor/scopeguard/*
+Copyright: 2016-2019, Ulrik Sverdrup "bluss" and scopeguard developers
+License: Apache-2 or Expat

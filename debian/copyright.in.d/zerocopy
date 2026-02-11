@@ -1,0 +1,32 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/zerocopy ***
+
+Files: rust-vendor/zerocopy/*
+Copyright: 2018-2026, The Fuchsia Authors
+License: Apache-2 or BSD-2-clause or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/zerocopy/LICENSE-APACHE
+ rust-vendor/zerocopy/LICENSE-BSD
+ rust-vendor/zerocopy/LICENSE-MIT
+
+Files: rust-vendor/zerocopy/LICENSE-APACHE
+Copyright: 2023, The Fuchsia Authors
+License: Apache-2
+
+Files: rust-vendor/zerocopy/LICENSE-BSD
+Copyright: 2019, The Fuchsia Authors
+License: BSD-2-clause
+
+Files: rust-vendor/zerocopy/LICENSE-MIT
+Copyright: 2023, The Fuchsia Authors
+License: Expat
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: BSD-2-clause
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

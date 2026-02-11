@@ -1,0 +1,7 @@
+Files: rust-vendor/spin/*
+Copyright: 2014, Mathijs van de Nes
+License: Expat
+
+Files: rust-vendor/spin/src/barrier.rs
+Copyright: 2014, The Rust Project Developers. See the COPYRIGHT
+License: Apache-2

@@ -1,0 +1,22 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/libc ***
+
+Files: rust-vendor/libc/*
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/libc/LICENSE-APACHE
+ rust-vendor/libc/LICENSE-MIT
+
+Files: rust-vendor/libc/LICENSE-MIT
+Copyright: 2014-2020, The Rust Project Developers
+License: Expat
+
+Files: rust-vendor/libc/LICENSE-APACHE
+License: Apache-2
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

@@ -1,0 +1,28 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/uguid ***
+
+Files: rust-vendor/uguid/*
+Copyright: 2023,  Google LLC
+           2022, Google LLC
+License: Apache-2
+
+Files: rust-vendor/uguid/.cargo-checksum.json
+       rust-vendor/uguid/CHANGELOG.md
+       rust-vendor/uguid/Cargo.lock
+       rust-vendor/uguid/Cargo.toml
+       rust-vendor/uguid/README.md
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/uguid/LICENSE-APACHE
+ rust-vendor/uguid/LICENSE-MIT
+
+Files: rust-vendor/uguid/LICENSE-MIT
+Copyright: 2022, Google LLC
+License: Expat
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

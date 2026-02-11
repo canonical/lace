@@ -1,0 +1,9 @@
+Files: rust-vendor/rustix/*
+Copyright: unspecified, authors are listed as Dan Gohman and Jakub Konka
+License: Apache-2 with LLVM exception or Apache-2 or Expat
+
+Files: rust-vendor/rustix/src/backend/linux_raw/vdso.rs
+Copyright: unspecified
+License: CC0
+ On Debian systems, the CC0 license can be found in
+ /usr/share/common-licenses/CC0-1.0

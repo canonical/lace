@@ -1,0 +1,24 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/flate2 ***
+
+Files: rust-vendor/flate2/*
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/flate2/LICENSE-APACHE
+ rust-vendor/flate2/LICENSE-MIT
+
+Files: rust-vendor/flate2/LICENSE-APACHE
+       rust-vendor/flate2/src/bufreader.rs
+Copyright: 2013, The Rust Project Developers. See the COPYRIGHT
+License: Apache-2
+
+Files: rust-vendor/flate2/LICENSE-MIT
+Copyright: 2014-2025, Alex Crichton
+License: Expat
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

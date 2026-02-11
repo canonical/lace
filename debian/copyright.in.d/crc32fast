@@ -1,0 +1,22 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/crc32fast ***
+
+Files: rust-vendor/crc32fast/*
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/crc32fast/LICENSE-APACHE
+ rust-vendor/crc32fast/LICENSE-MIT
+
+Files: rust-vendor/crc32fast/LICENSE-MIT
+Copyright: 2018, Sam Rijs, Alex Crichton
+License: Expat
+
+Files: rust-vendor/crc32fast/LICENSE-APACHE
+License: Apache-2
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

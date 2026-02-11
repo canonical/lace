@@ -1,0 +1,26 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/uefi ***
+
+Files: rust-vendor/uefi/*
+Copyright: The uefi-rs contributors
+License: Expat
+
+Files: rust-vendor/uefi/.cargo-checksum.json
+       rust-vendor/uefi/CHANGELOG.md
+       rust-vendor/uefi/Cargo.lock
+       rust-vendor/uefi/Cargo.toml
+       rust-vendor/uefi/README.md
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/uefi/LICENSE-APACHE
+ rust-vendor/uefi/LICENSE-MIT
+
+Files: rust-vendor/uefi/LICENSE-APACHE
+License: Apache-2
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

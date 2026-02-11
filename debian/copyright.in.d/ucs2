@@ -1,0 +1,14 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/ucs2 ***
+
+Files: rust-vendor/ucs2/*
+License: MPL-2
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/ucs2/LICENSE
+
+Files: rust-vendor/ucs2/LICENSE
+License: MPL-2
+
+License: MPL-2
+Comment: Add the corresponding license text here

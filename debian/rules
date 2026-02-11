@@ -1,0 +1,101 @@
+#!/usr/bin/make -f
+include /usr/share/dpkg/architecture.mk
+include /usr/share/dpkg/buildflags.mk
+include /usr/share/rustc/architecture.mk
+
+DEB_UEFI_RUST_TYPE = $(shell echo $(DEB_HOST_RUST_TYPE) | sed s#unknown-.*#unknown-uefi#)
+
+export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+export DEB_HOST_RUST_TYPE DEB_HOST_GNU_TYPE
+export CARGO_PROFILE_RELEASE_DEBUG=true
+VERSION := $(shell dpkg-parsechangelog -S Version|sed -e "s|.*~\(.*\)-.*|\1|g")
+UPSTREAM_VERSION := $(shell dpkg-parsechangelog -S Version|cut -d- -f1)
+
+# Vendoring setup
+# FIXME: The upstream Makefile we use doesn't work with the cargo wrapper,
+# as it assumes no cross-compilation and hence files appearing in target/release
+# rather than the architecture-specific target directory.
+#export CARGO = /usr/share/cargo/bin/cargo
+export CARGO_VENDOR_DIR = rust-vendor
+export CARGO_HOME = $(CURDIR)/debian/cargo_home
+export DEB_CARGO_CRATE = lace_$(VERSION)
+export CARGO = /usr/share/cargo/bin/cargo
+
+VENDOR_TARBALL = lace_$(UPSTREAM_VERSION).orig-$(CARGO_VENDOR_DIR).tar.xz
+
+%:
+	dh $@ --buildsystem cargo
+
+run-decopy:
+	rm -f debian/copyright.in.d/* debian/copyright
+	for crate in rust-vendor/*/; do decopy $$crate  -j 8 --no-split-on-license -o debian/copyright.in.d/$$(basename $$crate) --mode partial -X '*LICENSE*' -X 'COPYING' ; done
+
+debian/copyright: debian/copyright.header debian/copyright.d/* debian/rules
+	( cat debian/copyright.header; echo; \
+	  for crate in $(shell ls -1 debian/copyright.d | sort); do \
+	  	grep-dctrl -FFiles "" debian/copyright.d/$$crate || true; \
+	  done; \
+	  for crate in $(shell ls -1 debian/copyright.d | sort); do \
+	  	grep-dctrl --not -FFiles "" debian/copyright.d/$$crate || true; \
+	  done | sort-dctrl -kLicense ) > debian/copyright.new
+	cme check dpkg-copyright
+	mv debian/copyright.new debian/copyright
+
+vendor-tarball-quick-check:
+	if [ -e ../$(VENDOR_TARBALL) ]; then echo "../$(VENDOR_TARBALL) already exists, bailing!"; exit 1; fi
+
+vendor-deps-cargo:
+	rm -rf $(CARGO_VENDOR_DIR)
+	# Deliberately don't use the wrapper, as it expects the configure step
+	# to have occurred already.
+	# If you have to modify the path here, don't forget to change the README.source doc
+	# as well.
+	env -i cargo-vendor-filterer --all-features  --platform '*-*-linux-gnu' --platform '*-*-unknown-*' $(CARGO_VENDOR_DIR)
+
+vendor-deps: vendor-deps-cargo
+	rm -r \
+		$(CARGO_VENDOR_DIR)/*/tests
+	# Remove the checksum files to allow us to patch the crates to remove extraneous dependencies
+	for crate in $(CARGO_VENDOR_DIR)/*; do \
+		sed -i 's/^{"files":.*"package":"\([a-z0-9]\+\)"}$$/{"files":{},"package":"\1"}/' $$crate/.cargo-checksum.json; \
+		done
+	# Cleanup temp files
+	rm -rf $(CARGO_HOME)
+
+vendor-tarball: vendor-tarball-quick-check vendor-deps
+	tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner --pax-option=exthdr.name=%d/PaxHeaders/%f,delete=atime,delete=ctime -caf ../$(VENDOR_TARBALL) $(CARGO_VENDOR_DIR)
+
+override_dh_auto_configure:
+	# We need to use a merged vendor directory to get the vendored dependencies from the rust standard library.
+	rm -rf debian/merged-vendor
+	mkdir debian/merged-vendor
+	ln -sf $(CURDIR)/rust-vendor/* debian/merged-vendor
+	ln -sf /usr/src/rustc-1.91.1/vendor/* debian/merged-vendor
+	$(CARGO) prepare-debian debian/merged-vendor
+	# Configure a cargo home for metal builds. This does not support most rustflags set by debcargo,
+	# particularly the linker flag throws it up, so delete them.
+	rm -rf $(CARGO_HOME).metal
+	cp -a $(CARGO_HOME) $(CARGO_HOME).metal
+	sed /rustflags/d -i $(CARGO_HOME).metal/config.toml
+	# Configure cargo to build the core and alloc libraries itself as bare metal targets don't have
+	# pre-built libraries
+	echo '[unstable]' >>  $(CARGO_HOME).metal/config.toml
+	echo 'build-std = ["core", "alloc"]' >>  $(CARGO_HOME).metal/config.toml
+	echo 'build-std-features = ["compiler-builtins-mem"]' >>  $(CARGO_HOME).metal/config.toml
+	/usr/share/cargo/bin/dh-cargo-vendored-sources
+
+override_dh_auto_test:
+	# dh_auto_test does not work due to feature unification across uefi and std targets
+	./scripts/cargo_ci.py test --verbose --workspace
+
+override_dh_auto_install:
+	$(CARGO) build --verbose -p pewrap -p collect-hwids --release
+	cargo run -p xtask -- mangen
+	# FIXME(juliank): This only works for cargo-1.91
+	RUSTC_BOOTSTRAP=1 CARGO_HOME=$(CARGO_HOME).metal cargo-1.91 -v build -p lace-stubble --target $(DEB_UEFI_RUST_TYPE) --release
+
+	dh_install -p lace-stubble target/$(DEB_UEFI_RUST_TYPE)/release/lace-stubble.efi usr/lib/stubble/
+	dh_install -p lace-stubble target/$(DEB_HOST_RUST_TYPE)/release/pewrap usr/bin/
+	dh_install -p lace-stubble target/$(DEB_HOST_RUST_TYPE)/release/collect-hwids usr/bin/
+	# Build a legacy ukify compatible stubble
+	debian/lace-stubble/usr/bin/pewrap --stub debian/lace-stubble/usr/lib/stubble/lace-stubble.efi --output debian/lace-stubble/usr/lib/stubble/stubble.efi --post-process-for-ukify

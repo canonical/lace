@@ -1,0 +1,22 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/scopeguard ***
+
+Files: rust-vendor/scopeguard/*
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/scopeguard/LICENSE-APACHE
+ rust-vendor/scopeguard/LICENSE-MIT
+
+Files: rust-vendor/scopeguard/LICENSE-MIT
+Copyright: 2016-2019, Ulrik Sverdrup "bluss" and scopeguard developers
+License: Expat
+
+Files: rust-vendor/scopeguard/LICENSE-APACHE
+License: Apache-2
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

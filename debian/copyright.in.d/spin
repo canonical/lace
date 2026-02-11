@@ -1,0 +1,22 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/spin ***
+
+Files: rust-vendor/spin/*
+License: Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/spin/LICENSE
+
+Files: rust-vendor/spin/src/barrier.rs
+Copyright: 2014, The Rust Project Developers. See the COPYRIGHT
+License: Apache-2
+
+Files: rust-vendor/spin/LICENSE
+Copyright: 2014, Mathijs van de Nes
+License: Expat
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

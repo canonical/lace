@@ -1,0 +1,5 @@
+Files: rust-vendor/clap_derive/*
+Copyright: 2018, Guillaume Pinot (@TeXitoi) <texitoi@texitoi.eu>,
+           2018, Kevin Knapp (@kbknapp) <kbknapp@gmail.com>
+           2018, Ana Hobden (@hoverbear) <operator@hoverbear.org>
+License: Apache-2 or Expat

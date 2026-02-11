@@ -1,0 +1,9 @@
+Files: rust-vendor/clap/*
+Copyright:
+ 2015-2016, Kevin B. Knapp and [`clap-rs` contributors](https://github.com/clap-rs/clap/graphs/contributors)
+ Individual contributors
+License: Apache-2 or Expat, and Expat
+Comment:
+ The lib.rs only claims the Expat license; but the
+ Cargo.toml claims Apache-2 or Expat, so I guess both
+ apply.

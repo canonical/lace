@@ -1,0 +1,6 @@
+Files: rust-vendor/serde_json/*
+Copyright: unspecified, authors are listed as Erick Tryzelaar and David Tolnay
+           Alexander Huszagh
+License: Apache-2 or Expat
+Comment:
+ See mod.rs, derived from work by Alexander Huszagh

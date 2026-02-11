@@ -1,0 +1,8 @@
+Files: rust-vendor/anstream/*
+Copyright: Individual contributors
+License: Apache-2 or Expat
+
+License: Apache-2
+ On Debian systems a copy of the Apache license can be found in
+ /usr/share/common-licenses/Apache-2.0.
+

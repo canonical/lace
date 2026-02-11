@@ -1,0 +1,4 @@
+Files: rust-vendor/errno/*
+Copyright: 2014-2015, The Rust Project Developers. See the COPYRIGHT
+           2014, Chris Wong
+License: Apache-2 or Expat

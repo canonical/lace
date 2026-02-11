@@ -1,0 +1,4 @@
+Files: rust-vendor/flate2/*
+Copyright: 2013, The Rust Project Developers. See the COPYRIGHT
+           2014-2025, Alex Crichton
+License: Apache-2 or Expat

@@ -1,0 +1,3 @@
+Files: rust-vendor/uefi/*
+Copyright: The uefi-rs contributors
+License: Apache-2 or Expat

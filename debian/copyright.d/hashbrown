@@ -1,0 +1,3 @@
+Files: rust-vendor/hashbrown/*
+Copyright: 2016, Amanieu d'Antras
+License: Apache-2 or Expat

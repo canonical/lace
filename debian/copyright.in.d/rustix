@@ -1,0 +1,31 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/rustix ***
+
+Files: rust-vendor/rustix/*
+Copyright: assignment is required to contribute to the `rustix`
+           violation or misattribution of any kind
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/rustix/LICENSE-APACHE
+ rust-vendor/rustix/LICENSE-Apache-2.0_WITH_LLVM-exception
+ rust-vendor/rustix/LICENSE-MIT
+
+Files: rust-vendor/rustix/LICENSE-APACHE
+       rust-vendor/rustix/LICENSE-Apache-2.0_WITH_LLVM-exception
+License: Apache-2
+
+Files: rust-vendor/rustix/src/backend/linux_raw/vdso.rs
+License: CC0
+
+Files: rust-vendor/rustix/LICENSE-MIT
+License: Expat
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: CC0
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

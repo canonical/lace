@@ -1,0 +1,4 @@
+Files: rust-vendor/crc32fast/*
+Copyright: 2018, Sam Rijs
+           2018, Alex Crichton
+License: Apache-2 or Expat

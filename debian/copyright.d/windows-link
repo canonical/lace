@@ -1,0 +1,5 @@
+Files: rust-vendor/windows-*/*
+Copyright: unspecified
+License: Ignore
+ These crates have been replaced by empty ones by cargo-vendor-filterer
+ as such there is nothing to license.

@@ -1,0 +1,23 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/uefi-macros ***
+
+Files: rust-vendor/uefi-macros/*
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/uefi-macros/LICENSE-APACHE
+ rust-vendor/uefi-macros/LICENSE-MIT
+
+Files: rust-vendor/uefi-macros/LICENSE-MIT
+       rust-vendor/uefi-macros/src/*
+Copyright: The uefi-rs contributors
+License: Expat
+
+Files: rust-vendor/uefi-macros/LICENSE-APACHE
+License: Apache-2
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

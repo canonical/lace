@@ -1,0 +1,21 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/itoa ***
+
+Files: rust-vendor/itoa/*
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/itoa/LICENSE-APACHE
+ rust-vendor/itoa/LICENSE-MIT
+
+Files: rust-vendor/itoa/LICENSE-APACHE
+License: Apache-2
+
+Files: rust-vendor/itoa/LICENSE-MIT
+License: Expat
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

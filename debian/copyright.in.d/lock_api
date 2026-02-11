@@ -1,0 +1,25 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/lock_api ***
+
+Files: rust-vendor/lock_api/*
+Copyright: 2016-2018, Amanieu d'Antras
+License: Apache-2
+
+Files: rust-vendor/lock_api/.cargo-checksum.json
+       rust-vendor/lock_api/Cargo.lock
+       rust-vendor/lock_api/Cargo.toml
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/lock_api/LICENSE-APACHE
+ rust-vendor/lock_api/LICENSE-MIT
+
+Files: rust-vendor/lock_api/LICENSE-MIT
+Copyright: 2016, The Rust Project Developers
+License: Expat
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

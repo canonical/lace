@@ -1,0 +1,22 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/memchr ***
+
+Files: rust-vendor/memchr/*
+License: Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/memchr/LICENSE-MIT
+
+Files: rust-vendor/memchr/LICENSE-MIT
+Copyright: 2015, Andrew Gallant
+License: Expat
+
+Files: rust-vendor/memchr/UNLICENSE
+Copyright: laws, the author or authors
+License: Unlicense
+
+License: Expat
+Comment: Add the corresponding license text here
+
+License: Unlicense
+Comment: Add the corresponding license text here

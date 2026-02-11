@@ -1,0 +1,15 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/ptr_meta_derive ***
+
+Files: rust-vendor/ptr_meta_derive/*
+License: Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/ptr_meta_derive/LICENSE
+
+Files: rust-vendor/ptr_meta_derive/LICENSE
+Copyright: 2021, David Koloski
+License: Expat
+
+License: Expat
+Comment: Add the corresponding license text here

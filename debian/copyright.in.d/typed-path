@@ -1,0 +1,6 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/typed-path ***
+
+Files: rust-vendor/typed-path/*
+License: Unknown

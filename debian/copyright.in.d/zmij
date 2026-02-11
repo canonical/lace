@@ -1,0 +1,14 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/zmij ***
+
+Files: rust-vendor/zmij/*
+License: Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/zmij/LICENSE-MIT
+
+Files: rust-vendor/zmij/LICENSE-MIT
+License: Expat
+
+License: Expat
+Comment: Add the corresponding license text here

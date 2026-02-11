@@ -1,0 +1,17 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/strsim ***
+
+Files: rust-vendor/strsim/*
+License: Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/strsim/LICENSE
+
+Files: rust-vendor/strsim/LICENSE
+Copyright: 2018, Akash Kurdekar
+           2015, Danny Guo
+           2016, Titus Wormer <tituswormer@gmail.com>
+License: Expat
+
+License: Expat
+Comment: Add the corresponding license text here

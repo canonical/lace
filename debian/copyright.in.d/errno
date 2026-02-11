@@ -1,0 +1,27 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/errno ***
+
+Files: rust-vendor/errno/*
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/errno/LICENSE-APACHE
+ rust-vendor/errno/LICENSE-MIT
+
+Files: rust-vendor/errno/LICENSE-APACHE
+       rust-vendor/errno/src/hermit.rs
+       rust-vendor/errno/src/unix.rs
+       rust-vendor/errno/src/wasi.rs
+       rust-vendor/errno/src/windows.rs
+Copyright: 2014-2015, The Rust Project Developers. See the COPYRIGHT
+License: Apache-2
+
+Files: rust-vendor/errno/LICENSE-MIT
+Copyright: 2014, Chris Wong
+License: Expat
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

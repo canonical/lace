@@ -1,0 +1,6 @@
+man/
+debian/merged-vendor/
+debian/cargo_home.metal/
+debian/cargo_home/
+Cargo.toml.orig
+Cargo.lock

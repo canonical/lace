@@ -1,0 +1,3 @@
+Files: rust-vendor/regex-automata/*
+Copyright: 2014, The Rust Project Developers
+License: Apache-2 or Expat

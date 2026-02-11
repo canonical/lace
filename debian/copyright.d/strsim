@@ -1,0 +1,5 @@
+Files: rust-vendor/strsim/*
+Copyright: 2018, Akash Kurdekar
+           2015, Danny Guo
+           2016, Titus Wormer <tituswormer@gmail.com>
+License: Expat

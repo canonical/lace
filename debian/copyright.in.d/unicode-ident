@@ -1,0 +1,22 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/unicode-ident ***
+
+Files: rust-vendor/unicode-ident/*
+Copyright: 1991-2023, Unicode, Inc
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/unicode-ident/LICENSE-APACHE
+ rust-vendor/unicode-ident/LICENSE-MIT
+
+Files: rust-vendor/unicode-ident/LICENSE-APACHE
+License: Apache-2
+
+Files: rust-vendor/unicode-ident/LICENSE-MIT
+License: Expat
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

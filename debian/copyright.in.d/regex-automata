@@ -1,0 +1,22 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/regex-automata ***
+
+Files: rust-vendor/regex-automata/*
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/regex-automata/LICENSE-APACHE
+ rust-vendor/regex-automata/LICENSE-MIT
+
+Files: rust-vendor/regex-automata/LICENSE-MIT
+Copyright: 2014, The Rust Project Developers
+License: Expat
+
+Files: rust-vendor/regex-automata/LICENSE-APACHE
+License: Apache-2
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here

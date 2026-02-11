@@ -1,0 +1,15 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/zip ***
+
+Files: rust-vendor/zip/*
+License: Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/zip/LICENSE
+
+Files: rust-vendor/zip/LICENSE
+Copyright: 2014, Mathijs van de Nes
+License: Expat
+
+License: Expat
+Comment: Add the corresponding license text here

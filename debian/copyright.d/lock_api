@@ -1,0 +1,6 @@
+Files: rust-vendor/lock_api/*
+Copyright: 2016-2018, Amanieu d'Antras
+           2016, The Rust Project Developers
+License: Apache-2 or Expat
+Comment:
+ 2016, The Rust Project Developers from LICENSE-MIT

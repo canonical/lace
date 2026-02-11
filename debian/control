@@ -1,0 +1,39 @@
+Source: lace
+Section: utils
+Priority: optional
+Build-Depends: debhelper-compat (= 12),
+               dh-cargo (>= 24),
+               dh-sequence-bash-completion,
+               cargo-1.91:native,
+               cargo:native,
+               lld-20:native,
+               rust-1.91-src:native,
+               rustc-1.91:native,
+               rustc:native,
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+Standards-Version: 4.6.2
+Homepage: https://github.com/canonical/lace
+XS-Vendored-Sources-Rust: aho-corasick@1.1.4, anstream@0.6.21, anstyle-parse@0.2.7, anstyle-query@1.1.5, anstyle@1.0.13, bit_field@0.10.3, bitflags@2.10.0, cfg-if@1.0.4, clap@4.5.57, clap_builder@4.5.57, clap_derive@4.5.55, clap_lex@0.7.6, clap_mangen@0.2.31, colorchoice@1.0.4, crc32fast@1.5.0, equivalent@1.0.2, errno@0.3.14, fdt@0.1.5, flate2@1.1.5, hashbrown@0.16.1, heck@0.5.0, indexmap@2.12.1, is_terminal_polyfill@1.70.2, itoa@1.0.15, libc@0.2.177, libz-rs-sys@0.5.4, linux-raw-sys@0.11.0, lock_api@0.4.14, log@0.4.29, memchr@2.7.6, proc-macro2@1.0.106, ptr_meta@0.3.1, ptr_meta_derive@0.3.1, quote@1.0.44, regex-automata@0.4.13, regex-syntax@0.8.8, regex@1.12.3, roff@0.2.2, rustix@1.1.2, scopeguard@1.2.0, serde@1.0.228, serde_core@1.0.228, serde_derive@1.0.228, serde_json@1.0.149, spin@0.10.0, strsim@0.11.1, syn@2.0.114, terminal_size@0.4.3, typed-path@0.12.1, ucs2@0.3.3, uefi-macros@0.19.0, uefi-raw@0.13.0, uefi@0.36.1, uguid@2.2.1, unicode-ident@1.0.22, utf8parse@0.2.2, zerocopy-derive@0.8.39, zerocopy@0.8.39, zip@7.4.0, zlib-rs@0.5.4, zmij@1.0.10
+Rules-Requires-Root: no
+
+Package: lace-stubble
+Architecture: any
+Multi-Arch: foreign
+Depends: ${cargo:Depends},
+         ${misc:Depends},
+         ${shlibs:Depends},
+Recommends: ${cargo:Recommends},
+Suggests: ${cargo:Suggests},
+Conflicts: stubble,
+Replaces: stubble,
+Provides: stubble (= 5),
+          ${cargo:Provides},
+Built-Using: ${cargo:Built-Using},
+XB-X-Cargo-Built-Using: ${cargo:X-Cargo-Built-Using}
+Description: UEFI kernel stub with device-tree loading capability
+ Small Linux kernel EFI boot stub bundling device trees, a CHID database
+ and the kernel. The stub finds a matching device tree based on CHIDs
+ generated from SMBIOS and loads it before executing the embedded kernel.
+ .
+ Also contains some matching user space utilities like pewrap to build
+ stubble images or collect-hwids to collect hwids for stubble.

@@ -1,0 +1,3 @@
+Files: rust-vendor/zerocopy-derive/*
+Copyright: 2019-2024, The Fuchsia Authors
+License: Apache-2 or BSD-2-clause or Expat

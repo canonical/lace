@@ -1,0 +1,19 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Comment:
+ The debian/copyright file is generated from debian/copyright.header
+ and debian/copyright.d files using `debian/rules debian/copyright`
+ .
+ The debian/copyright.d files are edited from files scanned with decopy,
+ the originals are in debian/copyright.in.d using `debian/rules run-decopy`
+
+Files: *
+Copyright: 2025 Canonical Ltd
+License: GPL-2.0-only or GPL-3.0-only
+
+License: GPL-2.0-only
+ On Debian systems, this licenses can be found in
+ /usr/share/common-licenses/GPL-2.0
+
+License: GPL-3.0-only
+ On Debian systems, this licenses can be found in
+ /usr/share/common-licenses/GPL-3.0

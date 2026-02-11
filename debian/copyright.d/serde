@@ -1,0 +1,3 @@
+Files: rust-vendor/serde/*
+Copyright: unspecified, authors are listed as Erick Tryzelaar and David Tolnay
+License: Apache-2 or Expat

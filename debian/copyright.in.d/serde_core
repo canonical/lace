@@ -1,0 +1,21 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: TODO
+Comment: *** only: rust-vendor/serde_core ***
+
+Files: rust-vendor/serde_core/*
+License: Apache-2 or Expat
+Comment: No explicit license found, using license(s) from:
+ rust-vendor/serde_core/LICENSE-APACHE
+ rust-vendor/serde_core/LICENSE-MIT
+
+Files: rust-vendor/serde_core/LICENSE-APACHE
+License: Apache-2
+
+Files: rust-vendor/serde_core/LICENSE-MIT
+License: Expat
+
+License: Apache-2
+Comment: Add the corresponding license text here
+
+License: Expat
+Comment: Add the corresponding license text here
