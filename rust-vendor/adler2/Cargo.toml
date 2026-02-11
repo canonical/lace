@@ -1,0 +1,65 @@
+[dependencies.core]
+optional = true
+package = "rustc-std-workspace-core"
+version = "1.0.0"
+
+[dev-dependencies]
+
+[features]
+default = ["std"]
+rustc-dep-of-std = ["core"]
+std = []
+
+[lib]
+name = "adler2"
+path = "src/lib.rs"
+
+[package]
+authors = ["Jonas Schievink <jonasschievink@gmail.com>", "oyvindln <oyvindln@users.noreply.github.com>"]
+autobenches = false
+autobins = false
+autoexamples = false
+autolib = false
+autotests = false
+categories = ["algorithms"]
+description = "A simple clean-room implementation of the Adler-32 checksum"
+documentation = "https://docs.rs/adler2/"
+edition = "2021"
+exclude = [".*"]
+keywords = ["checksum", "integrity", "hash", "adler32", "zlib"]
+license = "0BSD OR MIT OR Apache-2.0"
+name = "adler2"
+readme = "README.md"
+repository = "https://github.com/oyvindln/adler2"
+version = "2.0.1"
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--cfg=docsrs"]
+
+[package.metadata.release]
+no-dev-version = true
+pre-release-commit-message = "Release {{version}}"
+tag-message = "{{version}}"
+
+[[package.metadata.release.pre-release-replacements]]
+file = "CHANGELOG.md"
+replace = """
+## Unreleased
+
+No changes.
+
+## [{{version}} - {{date}}](https://github.com/jonas-schievink/adler/releases/tag/v{{version}})
+"""
+search = """
+## Unreleased
+"""
+
+[[package.metadata.release.pre-release-replacements]]
+file = "README.md"
+replace = 'adler = "{{version}}"'
+search = 'adler = "[a-z0-9\\.-]+"'
+
+[[package.metadata.release.pre-release-replacements]]
+file = "src/lib.rs"
+replace = "https://docs.rs/adler/{{version}}"
+search = 'https://docs.rs/adler/[a-z0-9\.-]+'
