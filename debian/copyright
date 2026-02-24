@@ -130,9 +130,7 @@ Files: rust-vendor/libc/*
 Copyright: 2014-2020, The Rust Project Developers
 License: Apache-2 or Expat
 
-Files: rust-vendor/libz-rs-sys/LICENSE
-       rust-vendor/libz-rs-sys/include/zconf.h
-       rust-vendor/libz-rs-sys/include/zlib.h
+Files: rust-vendor/libz-rs-sys/*
 Copyright: 1995-2024, Jean-loup Gailly and Mark Adler
            1995-2024, Jean-loup Gailly, Mark Adler
            2024, Trifecta Tech Foundation
