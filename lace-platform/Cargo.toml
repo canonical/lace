@@ -5,7 +5,7 @@ edition = "2024"
 license = "GPL-2.0-only OR GPL-3.0-only"
 
 [dependencies]
-bitflags = "2.10.0"
+bitflags = "2.11.0"
 lace-util = { version = "0.1.0", path = "../lace-util", default-features = false }
 lace-util-derive = { version = "0.1.0", path = "../lace-util-derive" }
 spin = "0.10.0"
