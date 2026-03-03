@@ -1,28 +1,7 @@
-Description: <short summary of the patch>
- TODO: Put a short summary on the line above and replace this paragraph
- with a longer explanation of this change. Complete the meta-information
- with other relevant fields (see below for details). To make it easier, the
- information below has been extracted from the changelog. Adjust it or drop
- it.
- .
- lace (0.1.0-0ubuntu1) resolute; urgency=medium
- .
-   * Initial upload
+Description: exclude vendored directories
+ Exclude the vendored directories from the workspace so the cargo
+ build can succed.
 Author: Julian Andres Klode <juliank@ubuntu.com>
-
----
-The information above should follow the Patch Tagging Guidelines, please
-checkout https://dep.debian.net/deps/dep3/ to learn about the format. Here
-are templates for supplementary fields that you might want to add:
-
-Origin: (upstream|backport|vendor|other), (<patch-url>|commit:<commit-id>)
-Bug: <upstream-bugtracker-url>
-Bug-Debian: https://bugs.debian.org/<bugnumber>
-Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
-Forwarded: (no|not-needed|<patch-forwarded-url>)
-Applied-Upstream: <version>, (<commit-url>|commit:<commid-id>)
-Reviewed-By: <name and email of someone who approved/reviewed the patch>
-Last-Update: 2026-02-02
 
 --- lace-0.1.0.orig/Cargo.toml
 +++ lace-0.1.0/Cargo.toml
