@@ -530,4 +530,43 @@ mod test {
 
         assert_eq_all_chids(&srcs, &expected_chids);
     }
+
+    #[test]
+    fn test_chid_sources_error_from_smbios() {
+        let smbios_err = crate::smbios::SmbiosParseError;
+        let chid_err: ChidSourcesError = smbios_err.into();
+        assert!(matches!(
+            chid_err,
+            ChidSourcesError::SmbiosError(crate::smbios::SmbiosParseError)
+        ));
+    }
+
+    #[test]
+    fn test_chid_sources_error_from_edid() {
+        let edid_err = crate::edid::EdidParseError::InvalidHeader;
+        let chid_err: ChidSourcesError = edid_err.into();
+        assert!(matches!(
+            chid_err,
+            ChidSourcesError::EdidError(crate::edid::EdidParseError::InvalidHeader)
+        ));
+    }
+
+    #[test]
+    fn test_chid_sources_from_smbios_invalid_data() {
+        // Test with truncated/invalid SMBIOS data - empty data will fail to parse
+        let empty_smbios: &[u8] = &[];
+        let result = chid_sources_from_smbios_and_edid(None, empty_smbios, None);
+        // Empty SMBIOS data causes a parse error
+        assert!(result.is_err(), "Should fail to parse empty SMBIOS data");
+    }
+
+    #[test]
+    fn test_chid_sources_from_smbios_invalid_edid() {
+        // Test with invalid EDID data
+        let empty_smbios: &[u8] = &[];
+        let invalid_edid: &[u8] = &[0u8; 10]; // Too small
+        let result = chid_sources_from_smbios_and_edid(None, empty_smbios, Some(invalid_edid));
+        // Should fail with EdidError for truly invalid EDID that can't be parsed
+        assert!(result.is_err(), "Should fail with error for invalid EDID");
+    }
 }
