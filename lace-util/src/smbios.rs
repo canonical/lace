@@ -284,4 +284,58 @@ mod test {
         let res = find_smbios_table_by_type::<SmbiosTableType1>(&buf, 1);
         assert!(matches!(res, Err(SmbiosParseError)));
     }
+
+    #[test]
+    fn test_get_string_zero_index() {
+        let mut buf: Vec<u8> = Vec::new();
+        push_table(
+            &mut buf,
+            1,
+            size_of::<SmbiosTableType1>(),
+            b"STR1\0STR2\0\0",
+        );
+
+        let tbl = find_smbios_table_by_type::<SmbiosTableType1>(&buf, 1)
+            .unwrap()
+            .unwrap();
+
+        // Index 0 should return None (strings are 1-based)
+        assert_eq!(tbl.get_string(0), None);
+    }
+
+    #[test]
+    fn test_get_string_out_of_bounds() {
+        let mut buf: Vec<u8> = Vec::new();
+        push_table(&mut buf, 1, size_of::<SmbiosTableType1>(), b"STR1\0\0");
+
+        let tbl = find_smbios_table_by_type::<SmbiosTableType1>(&buf, 1)
+            .unwrap()
+            .unwrap();
+
+        // Index 2 should return None (only one string)
+        assert_eq!(tbl.get_string(2), None);
+    }
+
+    #[test]
+    fn test_invalid_when_header_length_too_small() {
+        // Header claims length smaller than header size itself
+        let buf = vec![
+            1, 2, // type 1, length 2 (smaller than header size of 4)
+            0x00, 0x00, // handle
+        ];
+        let res = find_smbios_table_by_type::<SmbiosTableType1>(&buf, 1);
+        assert!(matches!(res, Err(SmbiosParseError)));
+    }
+
+    #[test]
+    fn test_invalid_when_length_smaller_than_struct() {
+        // Header claims length smaller than the struct we're trying to read
+        let mut buf: Vec<u8> = Vec::new();
+        // Use a length that's valid for header but too small for Type1
+        let small_len = size_of::<SmbiosHeader>();
+        push_table(&mut buf, 1, small_len, b"\0\0");
+
+        let res = find_smbios_table_by_type::<SmbiosTableType1>(&buf, 1);
+        assert!(matches!(res, Err(SmbiosParseError)));
+    }
 }

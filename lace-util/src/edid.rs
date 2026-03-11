@@ -135,4 +135,22 @@ mod test {
         let result = ParsedEdid::parse(&edid_data);
         assert!(matches!(result, Err(EdidParseError::InvalidHeader)));
     }
+
+    #[test]
+    fn test_panel_id_invalid_manufacturer() {
+        // Create EDID with invalid manufacturer ID (contains 0 value)
+        let mut edid_data: [u8; 128] = [0; 128];
+        edid_data[0..8].copy_from_slice(&[0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00]);
+        // Set manufacturer_id with invalid bit pattern (0 in one of the letters)
+        edid_data[8] = 0x00; // This will decode to an invalid letter
+        edid_data[9] = 0x00;
+        edid_data[10..12].copy_from_slice(&[0x00, 0x00]); // product code
+
+        let parsed = ParsedEdid::parse(&edid_data).expect("Should parse EDID structure");
+        let result = parsed.panel_id();
+        assert!(
+            matches!(result, Err(EdidParseError::InvalidPanelId)),
+            "Should fail with InvalidPanelId for invalid manufacturer encoding"
+        );
+    }
 }

@@ -235,3 +235,146 @@ pub fn cmp_maj_min(maj_a: u8, min_a: u8, maj_b: u8, min_b: u8) -> Ordering {
         ord => ord,
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_find_byte_sequence() {
+        let data = b"hello world";
+        assert_eq!(find_byte_sequence(data, b"world"), Some(6));
+        assert_eq!(find_byte_sequence(data, b"hello"), Some(0));
+        assert_eq!(find_byte_sequence(data, b"notfound"), None);
+        assert_eq!(find_byte_sequence(data, b""), Some(0));
+    }
+
+    #[test]
+    fn test_find_byte_sequence_too_small() {
+        let data = b"hi";
+        assert_eq!(find_byte_sequence(data, b"hello"), None);
+    }
+
+    #[test]
+    fn test_hexdump() {
+        let data = b"hello world!";
+        let mut output = alloc::string::String::new();
+        hexdump(&mut output, data).unwrap();
+        assert!(output.contains("68 65 6c 6c"), "Should contain hex bytes");
+        assert!(output.contains("0000"), "Should contain offsets");
+    }
+
+    #[test]
+    fn test_guid_parse_error_display() {
+        let err = GuidParseError;
+        assert_eq!(format!("{}", err), "invalid GUID format");
+    }
+
+    #[test]
+    fn test_guid_try_from_str_invalid_length() {
+        let result = Guid::try_from_str("too-short");
+        assert!(matches!(result, Err(GuidParseError)));
+    }
+
+    #[test]
+    fn test_guid_try_from_str_missing_dashes() {
+        let result = Guid::try_from_str("123456789012345678901234567890123456");
+        assert!(matches!(result, Err(GuidParseError)));
+    }
+
+    #[test]
+    fn test_guid_try_from_str_invalid_hex() {
+        let result = Guid::try_from_str("zzzzzzzz-xxxx-xxxx-xxxx-xxxxxxxxxxxx");
+        assert!(matches!(result, Err(GuidParseError)));
+    }
+
+    #[test]
+    fn test_guid_try_from() {
+        let guid_str = "12345678-1234-5678-9abc-def012345678";
+        let result: Result<Guid, _> = guid_str.try_into();
+        assert!(result.is_ok());
+        let guid = result.unwrap();
+        assert_eq!(guid.data1, 0x12345678);
+        assert_eq!(guid.data2, 0x1234);
+        assert_eq!(guid.data3, 0x5678);
+    }
+
+    #[test]
+    fn test_guid_display() {
+        let guid = guid_str("12345678-1234-5678-9abc-def012345678");
+        let display_str = format!("{}", guid);
+        assert_eq!(display_str, "12345678-1234-5678-9abc-def012345678");
+    }
+
+    #[test]
+    fn test_guid_debug() {
+        let guid = guid_str("12345678-1234-5678-9abc-def012345678");
+        let debug_str = format!("{:?}", guid);
+        assert!(debug_str.contains("guid_str"));
+        assert!(debug_str.contains("12345678-1234-5678-9abc-def012345678"));
+    }
+
+    #[test]
+    fn test_cmp_maj_min_greater() {
+        assert_eq!(cmp_maj_min(2, 0, 1, 9), Ordering::Greater);
+    }
+
+    #[test]
+    fn test_cmp_maj_min_less() {
+        assert_eq!(cmp_maj_min(1, 5, 2, 0), Ordering::Less);
+    }
+
+    #[test]
+    fn test_cmp_maj_min_equal_major_greater_minor() {
+        assert_eq!(cmp_maj_min(2, 5, 2, 3), Ordering::Greater);
+    }
+
+    #[test]
+    fn test_cmp_maj_min_equal_major_less_minor() {
+        assert_eq!(cmp_maj_min(2, 3, 2, 5), Ordering::Less);
+    }
+
+    #[test]
+    fn test_cmp_maj_min_equal() {
+        assert_eq!(cmp_maj_min(2, 3, 2, 3), Ordering::Equal);
+    }
+
+    #[test]
+    fn test_align_up_macro() {
+        assert_eq!(align_up!(10u32, 4u32), 12);
+        assert_eq!(align_up!(12u32, 4u32), 12);
+        assert_eq!(align_up!(0u32, 4u32), 0);
+        assert_eq!(align_up!(1u32, 1u32), 1);
+    }
+
+    #[test]
+    fn test_align_down_macro() {
+        assert_eq!(align_down!(10u32, 4u32), 8);
+        assert_eq!(align_down!(12u32, 4u32), 12);
+        assert_eq!(align_down!(0u32, 4u32), 0);
+        assert_eq!(align_down!(3u32, 4u32), 0);
+    }
+
+    #[test]
+    fn test_count_blocks_aligned_up_macro() {
+        assert_eq!(count_blocks_aligned_up!(10u32, 4u32), 3);
+        assert_eq!(count_blocks_aligned_up!(12u32, 4u32), 3);
+        assert_eq!(count_blocks_aligned_up!(0u32, 4u32), 0);
+    }
+
+    #[test]
+    fn test_count_blocks_aligned_down_macro() {
+        assert_eq!(count_blocks_aligned_down!(10u32, 4u32), 2);
+        assert_eq!(count_blocks_aligned_down!(12u32, 4u32), 3);
+        assert_eq!(count_blocks_aligned_down!(3u32, 4u32), 0);
+    }
+
+    #[test]
+    fn test_guid_default() {
+        let guid = Guid::default();
+        assert_eq!(guid.data1, 0);
+        assert_eq!(guid.data2, 0);
+        assert_eq!(guid.data3, 0);
+        assert_eq!(guid.data4, [0; 8]);
+    }
+}
