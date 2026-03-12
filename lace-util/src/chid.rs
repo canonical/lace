@@ -562,11 +562,452 @@ mod test {
 
     #[test]
     fn test_chid_sources_from_smbios_invalid_edid() {
-        // Test with invalid EDID data
-        let empty_smbios: &[u8] = &[];
-        let invalid_edid: &[u8] = &[0u8; 10]; // Too small
-        let result = chid_sources_from_smbios_and_edid(None, empty_smbios, Some(invalid_edid));
-        // Should fail with EdidError for truly invalid EDID that can't be parsed
-        assert!(result.is_err(), "Should fail with error for invalid EDID");
+        // Test with invalid EDID data and minimally valid SMBIOS data so that
+        // we exercise the EDID error path rather than failing SMBIOS parsing.
+        //
+        // SMBIOS type 127 (end-of-table), length 4, handle 0xffff, followed by
+        // double-NUL string terminator.
+        let minimal_smbios: &[u8] = &[127, 4, 0xff, 0xff, 0, 0];
+        let invalid_edid: &[u8] = &[0u8; 10]; // Too small to be valid EDID
+        let result = chid_sources_from_smbios_and_edid(None, minimal_smbios, Some(invalid_edid));
+        // Should fail specifically with EdidError for truly invalid EDID that
+        // cannot be parsed.
+        assert!(
+            matches!(result, Err(ChidSourcesError::EdidError(_))),
+            "Should fail with EdidError for invalid EDID"
+        );
+    }
+
+    /// Helper to build a single SMBIOS table as raw bytes with a string section.
+    fn smbios_table_bytes<T: IntoBytes + Immutable>(table: &T, strings: &[&str]) -> Vec<u8> {
+        let mut data = Vec::new();
+        data.extend_from_slice(table.as_bytes());
+        for s in strings {
+            data.extend_from_slice(s.as_bytes());
+            data.push(0);
+        }
+        if strings.is_empty() {
+            data.push(0);
+        }
+        data.push(0); // double-null terminator
+        data
+    }
+
+    /// Helper to build a type 127 end-of-table marker.
+    fn smbios_end_marker() -> Vec<u8> {
+        let header = SmbiosHeader {
+            type_: 127,
+            length: size_of::<SmbiosHeader>() as u8,
+            handle: [0, 0],
+        };
+        smbios_table_bytes(&header, &[])
+    }
+
+    /// Helper to build a valid 128-byte EDID with panel_id "BOE0b66".
+    fn build_test_edid() -> [u8; 128] {
+        let mut edid = [0u8; 128];
+        // Magic header
+        edid[0..8].copy_from_slice(&[0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00]);
+        // Manufacturer "BOE": B=2, O=15, E=5 → (2<<10)|(15<<5)|5 = 0x09e5
+        edid[8] = 0x09;
+        edid[9] = 0xe5;
+        // Product code 0x0b66 (little-endian) → hex string "0b66"
+        edid[10] = 0x66;
+        edid[11] = 0x0b;
+        edid
+    }
+
+    fn build_type0(strings: &[&str]) -> Vec<u8> {
+        let type0 = SmbiosTableType0 {
+            header: SmbiosHeader {
+                type_: 0,
+                length: size_of::<SmbiosTableType0>() as u8,
+                handle: [0, 0],
+            },
+            vendor: 1,
+            bios_version: 2,
+            bios_segment: 0,
+            bios_release_date: 3,
+            bios_size: 0,
+            bios_characteristics: 0,
+        };
+        smbios_table_bytes(&type0, strings)
+    }
+
+    fn build_type0_24(major: u8, minor: u8, strings: &[&str]) -> Vec<u8> {
+        let type0_24 = SmbiosTableType0_24 {
+            header: SmbiosHeader {
+                type_: 0,
+                length: size_of::<SmbiosTableType0_24>() as u8,
+                handle: [0, 0],
+            },
+            vendor: 1,
+            bios_version: 2,
+            bios_segment: 0,
+            bios_release_date: 3,
+            bios_size: 0,
+            bios_characteristics: 0,
+            bios_characteristics_ext: [0, 0],
+            bios_major_release: major,
+            bios_minor_release: minor,
+            ec_fw_major_release: 0,
+            ec_fw_minor_release: 0,
+            ext_bios_rom_size: 0,
+        };
+        smbios_table_bytes(&type0_24, strings)
+    }
+
+    fn build_type1(strings: &[&str]) -> Vec<u8> {
+        let type1 = SmbiosTableType1 {
+            header: SmbiosHeader {
+                type_: 1,
+                length: size_of::<SmbiosTableType1>() as u8,
+                handle: [0, 0],
+            },
+            manufacturer: 1,
+            product_name: 2,
+            version: 3,
+            serial_number: 4,
+            uuid: crate::Guid::default(),
+            wake_up_type: 1,
+            sku_number: 5,
+            family: 6,
+        };
+        smbios_table_bytes(&type1, strings)
+    }
+
+    fn build_type2(strings: &[&str]) -> Vec<u8> {
+        let type2 = SmbiosTableType2 {
+            header: SmbiosHeader {
+                type_: 2,
+                length: size_of::<SmbiosTableType2>() as u8,
+                handle: [0, 0],
+            },
+            manufacturer: 1,
+            product_name: 2,
+            version: 3,
+            serial_number: 4,
+        };
+        smbios_table_bytes(&type2, strings)
+    }
+
+    fn build_type3(enclosure_type: u8, strings: &[&str]) -> Vec<u8> {
+        let type3 = SmbiosTableType3 {
+            header: SmbiosHeader {
+                type_: 3,
+                length: size_of::<SmbiosTableType3>() as u8,
+                handle: [0, 0],
+            },
+            manufacturer: 1,
+            type_: enclosure_type,
+            version: 2,
+            serial_number: 3,
+            asset_tag_number: 4,
+        };
+        smbios_table_bytes(&type3, strings)
+    }
+
+    fn build_sm_ep(major: u8, minor: u8) -> Vec<u8> {
+        let ep = SmbiosEntryPoint {
+            anchor_string: *b"_SM_",
+            entry_point_structure_checksum: 0,
+            entry_point_length: size_of::<SmbiosEntryPoint>() as u8,
+            major_version: major,
+            minor_version: minor,
+            max_structure_size: 0,
+            entry_point_revision: 0,
+            formatted_area: [0; 5],
+            intermediate_anchor_string: *b"_DMI_",
+            intermediate_checksum: 0,
+            table_length: 0,
+            table_address: 0,
+            number_of_smbios_structures: 0,
+            smbios_bcd_revision: 0,
+        };
+        ep.as_bytes().to_vec()
+    }
+
+    fn build_sm3_ep(major: u8, minor: u8) -> Vec<u8> {
+        let ep = Smbios3EntryPoint {
+            anchor_string: *b"_SM3_",
+            entry_point_structure_checksum: 0,
+            entry_point_length: size_of::<Smbios3EntryPoint>() as u8,
+            major_version: major,
+            minor_version: minor,
+            docrev: 0,
+            entry_point_revision: 0,
+            reserved: 0,
+            table_maximum_size: 0,
+            table_address: 0,
+        };
+        ep.as_bytes().to_vec()
+    }
+
+    #[test]
+    fn test_chid_sources_all_tables_no_ep() {
+        // No entry point → is_smbios_atleast_24 = false → SmbiosTableType0 path
+        let mut smbios = Vec::new();
+        smbios.extend(build_type0(&["BIOSVendor", "BIOSVer", "01/01/2025"]));
+        smbios.extend(build_type1(&[
+            "TestMfr",
+            "TestProduct",
+            "Ver1",
+            "Serial1",
+            "TestSKU",
+            "TestFamily",
+        ]));
+        smbios.extend(build_type2(&["BBMfr", "BBProduct", "BBVer", "BBSerial"]));
+        smbios.extend(build_type3(
+            0x0a,
+            &["EncMfr", "EncVer", "EncSerial", "EncAsset"],
+        ));
+        smbios.extend(smbios_end_marker());
+
+        let result = chid_sources_from_smbios_and_edid(None, &smbios, None).unwrap();
+
+        assert_eq!(result[CHID_SMBIOS_MANUFACTURER].as_deref(), Some("TestMfr"));
+        assert_eq!(result[CHID_SMBIOS_FAMILY].as_deref(), Some("TestFamily"));
+        assert_eq!(
+            result[CHID_SMBIOS_PRODUCT_NAME].as_deref(),
+            Some("TestProduct")
+        );
+        assert_eq!(result[CHID_SMBIOS_PRODUCT_SKU].as_deref(), Some("TestSKU"));
+        assert_eq!(
+            result[CHID_SMBIOS_BASEBOARD_MANUFACTURER].as_deref(),
+            Some("BBMfr")
+        );
+        assert_eq!(
+            result[CHID_SMBIOS_BASEBOARD_PRODUCT].as_deref(),
+            Some("BBProduct")
+        );
+        assert_eq!(
+            result[CHID_SMBIOS_BIOS_VENDOR].as_deref(),
+            Some("BIOSVendor")
+        );
+        assert_eq!(result[CHID_SMBIOS_BIOS_VERSION].as_deref(), Some("BIOSVer"));
+        // No EP → no BIOS major/minor
+        assert_eq!(result[CHID_SMBIOS_BIOS_MAJOR], None);
+        assert_eq!(result[CHID_SMBIOS_BIOS_MINOR], None);
+        // Enclosure type 0x0a → "a"
+        assert_eq!(result[CHID_SMBIOS_ENCLOSURE_TYPE].as_deref(), Some("a"));
+        assert_eq!(result[CHID_EDID_PANEL], None);
+    }
+
+    #[test]
+    fn test_chid_sources_with_sm24_ep() {
+        // SM_ entry point with version 2.4 → uses SmbiosTableType0_24 path
+        let ep = build_sm_ep(2, 4);
+
+        let mut smbios = Vec::new();
+        smbios.extend(build_type0_24(1, 13, &["BV24", "BVer24", "01/01/2025"]));
+        smbios.extend(smbios_end_marker());
+
+        let result = chid_sources_from_smbios_and_edid(Some(&ep), &smbios, None).unwrap();
+
+        assert_eq!(result[CHID_SMBIOS_BIOS_VENDOR].as_deref(), Some("BV24"));
+        assert_eq!(result[CHID_SMBIOS_BIOS_VERSION].as_deref(), Some("BVer24"));
+        // BIOS major=1 → "01", minor=13 → "0d"
+        assert_eq!(result[CHID_SMBIOS_BIOS_MAJOR].as_deref(), Some("01"));
+        assert_eq!(result[CHID_SMBIOS_BIOS_MINOR].as_deref(), Some("0d"));
+    }
+
+    #[test]
+    fn test_chid_sources_with_sm3_ep() {
+        // SM3_ entry point with version 3.0 → is_smbios_atleast_24 = true
+        let ep = build_sm3_ep(3, 0);
+
+        let mut smbios = Vec::new();
+        smbios.extend(build_type0_24(2, 22, &["BV3", "BVer3", "01/01/2025"]));
+        smbios.extend(smbios_end_marker());
+
+        let result = chid_sources_from_smbios_and_edid(Some(&ep), &smbios, None).unwrap();
+
+        assert_eq!(result[CHID_SMBIOS_BIOS_VENDOR].as_deref(), Some("BV3"));
+        assert_eq!(result[CHID_SMBIOS_BIOS_VERSION].as_deref(), Some("BVer3"));
+        // BIOS major=2 → "02", minor=22 → "16"
+        assert_eq!(result[CHID_SMBIOS_BIOS_MAJOR].as_deref(), Some("02"));
+        assert_eq!(result[CHID_SMBIOS_BIOS_MINOR].as_deref(), Some("16"));
+    }
+
+    #[test]
+    fn test_chid_sources_with_invalid_ep_anchor() {
+        // Entry point with unknown anchor → is_smbios_atleast_24 = false
+        let ep = b"INVALID_ENTRY_POINT_DATA_PADDED_TO_32_BYTES!!";
+
+        let mut smbios = Vec::new();
+        smbios.extend(build_type0(&["BVInv", "BVerInv", "01/01/2025"]));
+        smbios.extend(smbios_end_marker());
+
+        let result = chid_sources_from_smbios_and_edid(Some(ep.as_slice()), &smbios, None).unwrap();
+
+        // Falls through to SmbiosTableType0 (non-2.4) path
+        assert_eq!(result[CHID_SMBIOS_BIOS_VENDOR].as_deref(), Some("BVInv"));
+        assert_eq!(result[CHID_SMBIOS_BIOS_VERSION].as_deref(), Some("BVerInv"));
+        assert_eq!(result[CHID_SMBIOS_BIOS_MAJOR], None);
+        assert_eq!(result[CHID_SMBIOS_BIOS_MINOR], None);
+    }
+
+    #[test]
+    fn test_chid_sources_with_sm_ep_too_short() {
+        // SM_ anchor but data too short for SmbiosEntryPoint → return false
+        let ep = b"_SM_TOO";
+
+        let mut smbios = Vec::new();
+        smbios.extend(build_type0(&["BVShort", "BVerShort", "01/01/2025"]));
+        smbios.extend(smbios_end_marker());
+
+        let result = chid_sources_from_smbios_and_edid(Some(ep.as_slice()), &smbios, None).unwrap();
+
+        // Falls back to non-2.4 path
+        assert_eq!(result[CHID_SMBIOS_BIOS_VENDOR].as_deref(), Some("BVShort"));
+        assert_eq!(result[CHID_SMBIOS_BIOS_MAJOR], None);
+    }
+
+    #[test]
+    fn test_chid_sources_with_sm3_ep_too_short() {
+        // SM3_ anchor but data too short for Smbios3EntryPoint → return false
+        let ep = b"_SM3_SHORT";
+
+        let mut smbios = Vec::new();
+        smbios.extend(build_type0(&["BVSm3S", "BVSm3S", "01/01/2025"]));
+        smbios.extend(smbios_end_marker());
+
+        let result = chid_sources_from_smbios_and_edid(Some(ep.as_slice()), &smbios, None).unwrap();
+
+        // Falls back to non-2.4 path
+        assert_eq!(result[CHID_SMBIOS_BIOS_VENDOR].as_deref(), Some("BVSm3S"));
+        assert_eq!(result[CHID_SMBIOS_BIOS_MAJOR], None);
+    }
+
+    #[test]
+    fn test_chid_sources_with_sm_ep_pre24() {
+        // SM_ entry point with version 2.3 (< 2.4) → is_smbios_atleast_24 = false
+        let ep = build_sm_ep(2, 3);
+
+        let mut smbios = Vec::new();
+        smbios.extend(build_type0(&["BVPre24", "BVerPre24", "01/01/2025"]));
+        smbios.extend(smbios_end_marker());
+
+        let result = chid_sources_from_smbios_and_edid(Some(&ep), &smbios, None).unwrap();
+
+        assert_eq!(result[CHID_SMBIOS_BIOS_VENDOR].as_deref(), Some("BVPre24"));
+        assert_eq!(
+            result[CHID_SMBIOS_BIOS_VERSION].as_deref(),
+            Some("BVerPre24")
+        );
+        assert_eq!(result[CHID_SMBIOS_BIOS_MAJOR], None);
+        assert_eq!(result[CHID_SMBIOS_BIOS_MINOR], None);
+    }
+
+    #[test]
+    fn test_chid_sources_with_edid() {
+        let mut smbios = Vec::new();
+        smbios.extend(build_type1(&["Mfr", "Prod", "V", "S", "SKU", "Fam"]));
+        smbios.extend(smbios_end_marker());
+
+        let edid = build_test_edid();
+        let result = chid_sources_from_smbios_and_edid(None, &smbios, Some(&edid)).unwrap();
+
+        assert_eq!(result[CHID_SMBIOS_MANUFACTURER].as_deref(), Some("Mfr"));
+        assert_eq!(result[CHID_EDID_PANEL].as_deref(), Some("BOE0b66"));
+    }
+
+    #[test]
+    fn test_chid_sources_missing_optional_tables() {
+        // SMBIOS with only type1 and end marker — type0, type2, type3 absent
+        let mut smbios = Vec::new();
+        smbios.extend(build_type1(&[
+            "OnlyMfr", "OnlyProd", "V", "S", "OnlySKU", "OnlyFam",
+        ]));
+        smbios.extend(smbios_end_marker());
+
+        let result = chid_sources_from_smbios_and_edid(None, &smbios, None).unwrap();
+
+        assert_eq!(result[CHID_SMBIOS_MANUFACTURER].as_deref(), Some("OnlyMfr"));
+        assert_eq!(result[CHID_SMBIOS_FAMILY].as_deref(), Some("OnlyFam"));
+        assert_eq!(
+            result[CHID_SMBIOS_PRODUCT_NAME].as_deref(),
+            Some("OnlyProd")
+        );
+        assert_eq!(result[CHID_SMBIOS_PRODUCT_SKU].as_deref(), Some("OnlySKU"));
+        // No type2 → baseboard fields are None
+        assert_eq!(result[CHID_SMBIOS_BASEBOARD_MANUFACTURER], None);
+        assert_eq!(result[CHID_SMBIOS_BASEBOARD_PRODUCT], None);
+        // No type0 → BIOS fields are None
+        assert_eq!(result[CHID_SMBIOS_BIOS_VENDOR], None);
+        assert_eq!(result[CHID_SMBIOS_BIOS_VERSION], None);
+        assert_eq!(result[CHID_SMBIOS_BIOS_MAJOR], None);
+        assert_eq!(result[CHID_SMBIOS_BIOS_MINOR], None);
+        // No type3 → enclosure is None
+        assert_eq!(result[CHID_SMBIOS_ENCLOSURE_TYPE], None);
+        assert_eq!(result[CHID_EDID_PANEL], None);
+    }
+
+    #[test]
+    fn test_compute_chid_missing_required_source() {
+        // Type 14 requires only manufacturer. If all sources are None,
+        // compute_chid should return None.
+        let srcs: ChidSources = Default::default();
+        assert_eq!(compute_chid(&srcs, CHID_TYPES[14]), None);
+    }
+
+    #[test]
+    fn test_chid_sources_all_tables_with_sm24_ep() {
+        // Full end-to-end: all tables + SM_ 2.4 EP + EDID, then compute CHIDs
+        let ep = build_sm_ep(2, 4);
+
+        let mut smbios = Vec::new();
+        smbios.extend(build_type0_24(
+            1,
+            0x0d,
+            &["LENOVO", "N42ET92W (2.22 )", "01/01/2025"],
+        ));
+        smbios.extend(build_type1(&[
+            "LENOVO",
+            "ThinkPad T14s Gen 6",
+            "Ver",
+            "Serial",
+            "LENOVO_MT_21N2_BU_Think_FM_ThinkPad T14s Gen 6",
+            "ThinkPad T14s Gen 6",
+        ]));
+        smbios.extend(build_type2(&["LENOVO", "21N2ZC5QUS", "BBVer", "BBSerial"]));
+        smbios.extend(build_type3(
+            0x0a,
+            &["EncMfr", "EncVer", "EncSerial", "EncAsset"],
+        ));
+        smbios.extend(smbios_end_marker());
+
+        let edid = build_test_edid();
+        let result = chid_sources_from_smbios_and_edid(Some(&ep), &smbios, Some(&edid)).unwrap();
+
+        assert_eq!(result[CHID_SMBIOS_MANUFACTURER].as_deref(), Some("LENOVO"));
+        assert_eq!(
+            result[CHID_SMBIOS_FAMILY].as_deref(),
+            Some("ThinkPad T14s Gen 6")
+        );
+        assert_eq!(result[CHID_SMBIOS_BIOS_VENDOR].as_deref(), Some("LENOVO"));
+        assert_eq!(
+            result[CHID_SMBIOS_BIOS_VERSION].as_deref(),
+            Some("N42ET92W (2.22 )")
+        );
+        assert_eq!(result[CHID_SMBIOS_BIOS_MAJOR].as_deref(), Some("01"));
+        assert_eq!(result[CHID_SMBIOS_BIOS_MINOR].as_deref(), Some("0d"));
+        assert_eq!(
+            result[CHID_SMBIOS_BASEBOARD_MANUFACTURER].as_deref(),
+            Some("LENOVO")
+        );
+        assert_eq!(
+            result[CHID_SMBIOS_BASEBOARD_PRODUCT].as_deref(),
+            Some("21N2ZC5QUS")
+        );
+        assert_eq!(result[CHID_SMBIOS_ENCLOSURE_TYPE].as_deref(), Some("a"));
+        assert_eq!(result[CHID_EDID_PANEL].as_deref(), Some("BOE0b66"));
+
+        // Verify compute_chid works with parsed sources (type 14 = manufacturer only)
+        let chid = compute_chid(&result, CHID_TYPES[14]).unwrap();
+        assert_eq!(
+            chid,
+            crate::guid_str("6de5d951-d755-576b-bd09-c5cf66b27234")
+        );
     }
 }
