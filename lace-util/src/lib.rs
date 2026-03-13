@@ -6,6 +6,7 @@
 
 extern crate alloc;
 
+pub mod bls;
 pub mod chid;
 pub mod chid_mapping;
 pub mod chid_matcher;
