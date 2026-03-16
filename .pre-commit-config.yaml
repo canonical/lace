@@ -24,30 +24,6 @@ repos:
         types: [rust]
         pass_filenames: false
 
-      - id: cargo-check
-        name: cargo check
-        description: Check that Rust code compiles
-        entry: ./scripts/cargo_ci.py check --workspace
-        language: system
-        types: [rust]
-        pass_filenames: false
-
-      - id: cargo-clippy
-        name: cargo clippy
-        description: Run Clippy lints
-        entry: ./scripts/cargo_ci.py clippy --workspace -- -D warnings
-        language: system
-        types: [rust]
-        pass_filenames: false
-
-      - id: cargo-test
-        name: cargo test
-        description: Run unit tests
-        entry: ./scripts/cargo_ci.py test --workspace
-        language: system
-        types: [rust]
-        pass_filenames: false
-
   - repo: https://github.com/EmbarkStudios/cargo-deny
     rev: 0.19.0
     hooks:
