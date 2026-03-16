@@ -5,8 +5,8 @@ edition = "2024"
 license = "GPL-2.0-only OR GPL-3.0-only"
 
 [dependencies]
-clap = { version = "4.5.60", features = ["derive", "wrap_help"] }
+clap = { version = "4.6.0", features = ["derive", "wrap_help"] }
 lace-util = { version = "0.1.0", path = "../../lace-util" }
 regex = "1.12.3"
-zerocopy = "0.8.40"
+zerocopy = "0.8.42"
 zip = { version = "8.2.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
