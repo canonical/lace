@@ -73,7 +73,7 @@ jobs:
         run: ./scripts/cargo_ci.py test --workspace
 
   coverage:
-    name: Unit tests
+    name: Coverage testing
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -82,10 +82,11 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
+
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
       
-      - name: Run coverage
+      - name: Run coverage through tarpaulin
         run: |
           COVERAGE_DIR="coverage"
           mkdir -p "$COVERAGE_DIR"
