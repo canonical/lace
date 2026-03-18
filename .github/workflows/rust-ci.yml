@@ -3,7 +3,7 @@ name: Rust CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, coverage-testing ]
   pull_request:
     branches: [ main ]
 
@@ -71,3 +71,37 @@ jobs:
 
       - name: Run unit tests
         run: ./scripts/cargo_ci.py test --workspace
+
+  coverage:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+      
+      - name: Run coverage
+        run: |
+          COVERAGE_DIR="coverage"
+          mkdir -p "$COVERAGE_DIR"
+          CRATES=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[].name')
+          for crate in $CRATES; do
+            if cargo tarpaulin -p "$crate" --out Lcov --output-dir "$COVERAGE_DIR" --no-fail-fast; then
+              mv "$COVERAGE_DIR/lcov.info" "$COVERAGE_DIR/$crate.lcov"
+            fi
+          done
+      
+      - name: Install Universal Coverage Reporter
+        run: curl -L https://coveralls.io/coveralls-linux.tar.gz | tar -xz
+
+      - name: Upload to Coveralls
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+        run: ./coveralls
+ 
