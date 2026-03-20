@@ -3,6 +3,7 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! Sandbox platform abstractions.
 
+pub mod console;
 pub mod mem;
 pub mod tpm2;
 
@@ -15,14 +16,6 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "mock platform error")
     }
-}
-
-pub fn print_impl(args: std::fmt::Arguments<'_>) {
-    std::print!("{}", args);
-}
-
-pub fn println_impl(args: std::fmt::Arguments<'_>) {
-    std::println!("{}", args);
 }
 
 struct EdidRef;
