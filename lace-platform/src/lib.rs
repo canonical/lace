@@ -30,21 +30,22 @@ use mock as p;
 // The list of APIs exported here constitutes the portable Lace platform API.
 pub use p::Error;
 
-/// The macros below are implemented using these.
-pub use p::{print_impl, println_impl};
-
 // Macros for text output that should always be available
 #[macro_export]
 macro_rules! print {
+    () => {};
     ($($arg:tt)*) => {
-        $crate::print_impl(format_args!($($arg)*))
+        $crate::console::print_impl(format_args!($($arg)*))
     };
 }
 
 #[macro_export]
 macro_rules! println {
+    () => {
+        $crate::console::println_impl(format_args!(""))
+    };
     ($($arg:tt)*) => {
-        $crate::println_impl(format_args!($($arg)*))
+        $crate::console::println_impl(format_args!($($arg)*))
     };
 }
 
@@ -52,8 +53,9 @@ macro_rules! println {
 #[macro_export]
 #[cfg(debug_assertions)]
 macro_rules! debug {
+    () => {};
     ($($arg:tt)*) => {
-        $crate::print_impl(format_args!($($arg)*))
+        $crate::console::print_impl(format_args!($($arg)*))
     };
 }
 
@@ -66,8 +68,11 @@ macro_rules! debug {
 #[macro_export]
 #[cfg(debug_assertions)]
 macro_rules! debugln {
+    () => {
+        $crate::console::println_impl(format_args!(""))
+    };
     ($($arg:tt)*) => {
-        $crate::println_impl(format_args!($($arg)*))
+        $crate::console::println_impl(format_args!($($arg)*))
     };
 }
 
@@ -76,6 +81,8 @@ macro_rules! debugln {
 macro_rules! debugln {
     ($($arg:tt)*) => {};
 }
+
+pub use p::console;
 
 // Re-export derive macros
 pub use lace_util_derive::entry;
