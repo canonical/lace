@@ -85,7 +85,7 @@ jobs:
 
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
-      
+
       - name: Run coverage through tarpaulin
         run: |
           COVERAGE_DIR="coverage"
@@ -97,7 +97,7 @@ jobs:
               mv "$COVERAGE_DIR/lcov.info" "$COVERAGE_DIR/$crate.lcov"
             fi
           done
-      
+
       - name: Install Universal Coverage Reporter
         run: curl -L https://coveralls.io/coveralls-linux.tar.gz | tar -xz
 
