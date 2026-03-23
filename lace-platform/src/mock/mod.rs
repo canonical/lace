@@ -8,6 +8,7 @@ extern crate std;
 use core::{fmt, ops::Deref};
 
 pub mod mem;
+pub mod tpm2;
 
 #[derive(Debug)]
 pub struct Error;

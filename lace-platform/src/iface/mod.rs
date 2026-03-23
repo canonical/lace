@@ -4,3 +4,4 @@
 //! Interfaces module.
 
 pub mod mem;
+pub mod tpm2;
