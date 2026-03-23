@@ -5,8 +5,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-clap = { version = "4.6.0", features = ["derive", "wrap_help"] }
-lace-util = { version = "0.1.0", path = "../../lace-util" }
-regex = "1.12.3"
-zerocopy = "0.8.47"
-zip = { version = "8.4.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+clap.workspace = true
+lace-util = { path = "../../lace-util" }
+regex.workspace = true
+zerocopy.workspace = true
+zip.workspace = true

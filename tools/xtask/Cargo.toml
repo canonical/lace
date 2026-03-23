@@ -6,8 +6,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-clap = { version = "4.6.0", features = ["derive"] }
-clap_mangen = "0.2"
+clap.workspace = true
+clap_mangen.workspace = true
 
 # Tool dependencies for generating man pages
 pewrap = { path = "../pewrap" }
