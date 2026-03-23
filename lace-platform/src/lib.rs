@@ -3,7 +3,7 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! Platform abstractions for Lace.
 
-#![no_std]
+#![cfg_attr(not(feature = "mock"), no_std)]
 
 extern crate alloc;
 

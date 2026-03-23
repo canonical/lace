@@ -6,10 +6,10 @@ license = "GPL-2.0-only OR GPL-3.0-only"
 
 [dependencies]
 lace-util = { version = "0.1.0", path = "../lace-util", default-features = false }
-lace-platform = { version = "0.1.0", path = "../lace-platform", default-features = false, features = ["efi"] }
+lace-platform = { version = "0.1.0", path = "../lace-platform", default-features = false }
+uefi = { version = "0.36.1", optional = true }
 
-[target."cfg(target_os = \"uefi\")".dependencies]
-uefi = { version = "0.36.0", features = ["global_allocator", "panic_handler"] }
-
-[target."cfg(not(target_os = \"uefi\"))".dependencies]
-uefi = { version = "0.36.0", features = [] }
+[features]
+default = ["mock"]
+efi = ["lace-platform/efi", "dep:uefi"]
+mock = ["lace-platform/mock"]

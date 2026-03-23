@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only
 // Copyright (C) 2025, Canonical Ltd.
 // Authors: Mate Kukri <mate.kukri@canonical.com>
-//! Lace Stubble library
+//! Stubble library
 
 #![no_std]
 
@@ -12,6 +12,7 @@ use core::fmt::Display;
 use lace_platform::debugln;
 use lace_platform::dtb::install_dtb;
 use lace_platform::linux::boot_linux;
+use lace_platform::tpm2::{self, EventType, ExtendFlags};
 use lace_util::peimage::{PeError, SectionHeader, parse_pe};
 
 /// Errors that can occur when booting a Stubble image.
@@ -164,35 +165,20 @@ pub fn boot_stubble_image<'image>(
         debugln!("No platform compatible determined, skipping DTB installation");
     }
 
-    // Measure command line to TPM 2.0 - PCR 12
-    use uefi::proto::tcg;
-    if let Ok(mut tcg2) = lace_platform::efi::open_protocol_exclusive::<tcg::v2::Tcg>() {
-        let cmdline = cmdline.unwrap_or_default();
-        // Prepare buffer for event
-        // Unfortunately the exact size of PcrEventInputs header is not exposed,
-        // so we allocate a bit more than needed.
-        let mut event_buf = alloc::vec![0u8; 64 + cmdline.len()];
-        let _ = tcg::v2::PcrEventInputs::new_in_buffer(
-            &mut event_buf,
-            // Kernel command line is measured into PCR 12,
-            // see https://uapi-group.org/specifications/specs/linux_tpm_pcr_registry
-            tcg::PcrIndex(12),
-            tcg::EventType::IPL,
-            cmdline.as_bytes(),
-        )
-        .map_err(|err| err.to_err_without_payload())
-        .and_then(|event| {
-            tcg2.hash_log_extend_event(
-                tcg::v2::HashLogExtendEventFlags::empty(),
-                cmdline.as_bytes(),
-                event,
-            )
-        })
-        .inspect_err(|err| {
+    // Measure kernel command line to TPM 2.0 - PCR 12
+    // See https://uapi-group.org/specifications/specs/linux_tpm_pcr_registry
+    let cmdline_or_default = cmdline.unwrap_or_default();
+    match tpm2::hash_log_extend_event(
+        12,
+        ExtendFlags::empty(),
+        EventType::IPL.raw(),
+        cmdline_or_default.as_bytes(),
+        cmdline_or_default.as_bytes(),
+    ) {
+        Ok(()) => (),
+        Err(err) => {
             debugln!("Failed to measure kernel command line: {}", err);
-        });
-    } else {
-        debugln!("TPM 2.0 TCG protocol not available, skipping command line measurement");
+        }
     }
 
     // Boot the kernel

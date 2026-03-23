@@ -108,10 +108,10 @@ fn efi_main() -> uefi::Status {
     mem::efi_mem_init();
 
     unsafe extern "Rust" {
-        fn main() -> Result<(), Error>;
+        fn lace_app_main() -> Result<(), Error>;
     }
 
-    match unsafe { main() } {
+    match unsafe { lace_app_main() } {
         Ok(()) => uefi::Status::SUCCESS,
         Err(e) => e.status(),
     }
