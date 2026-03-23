@@ -437,7 +437,7 @@ pub fn derive_named_enum(input: TokenStream) -> TokenStream {
 /// Attribute macro to mark the application entry point function.
 ///
 /// This macro transforms the annotated function into the application entry
-/// point by applying the `#[unsafe(export_name = "main")]` attribute.
+/// point by applying the `#[unsafe(export_name = "lace_app_main")]` attribute.
 /// # Usage
 /// ```ignore
 /// use lace_util_derive::entry;
@@ -456,7 +456,7 @@ pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
     }
     let func = parse_macro_input!(input as ItemFn);
     quote! {
-        #[unsafe(export_name = "main")]
+        #[unsafe(export_name = "lace_app_main")]
         #func
     }
     .into()

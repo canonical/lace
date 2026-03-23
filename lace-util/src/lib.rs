@@ -6,10 +6,13 @@
 
 extern crate alloc;
 
+pub mod bls;
 pub mod chid;
 pub mod chid_mapping;
 pub mod chid_matcher;
 pub mod edid;
+#[cfg(feature = "grub")]
+pub mod grub;
 pub mod peimage;
 pub mod sha1;
 pub mod smbios;

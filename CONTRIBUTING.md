@@ -63,9 +63,7 @@ pre-commit install
 
 The hooks will run automatically on `git commit` and include:
 - Code formatting checks (`cargo fmt`)
-- Compilation checks (`cargo check`)
-- Lint checks (`cargo clippy`)
-- Unit tests (`cargo test` on most workspace crates)
+- Licensing checks (`cargo deny`)
 - General file checks (trailing whitespace, YAML/TOML syntax, etc.)
 
 **Before committing**, you can run the hooks manually to catch issues early:
@@ -74,7 +72,16 @@ pre-commit run --all-files
 ```
 
 If pre-commit is installed, it will automatically run on every commit and prevent
-commits with failing checks. This ensures all code meets quality standards before
+commits with failing checks.
+
+The following checks can be quite expensive and configuration-dependent:
+- Compilation checks (`cargo check`)
+- Lint checks (`cargo clippy`)
+- Unit tests (`cargo test` on most workspace crates)
+
+Please run them manually as needed.
+
+This ensures all code meets quality standards before
 being pushed to the repository.
 
 [cla]: https://ubuntu.com/legal/contributors

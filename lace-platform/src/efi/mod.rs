@@ -3,35 +3,21 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! UEFI platform abstractions.
 
-use core::fmt::{self, Write};
 use core::ops::Deref;
-
 use lace_util::smbios::{Smbios3EntryPoint, SmbiosEntryPoint};
 
+pub mod console;
 pub mod dtb;
 pub mod image;
 pub mod linux;
 pub mod mem;
 pub mod proto;
+pub mod tpm2;
 
 use proto::edid_discovered::EdidDiscoveredProtocol;
 
 /// Platform specific error type
 pub use uefi::Error;
-
-/// Platform specific text output
-pub fn print_impl(args: fmt::Arguments<'_>) {
-    uefi::system::with_stdout(|stdout| {
-        let _ = write!(stdout, "{}", args);
-    });
-}
-
-/// Platform specific text output with newline
-pub fn println_impl(args: fmt::Arguments<'_>) {
-    uefi::system::with_stdout(|stdout| {
-        let _ = writeln!(stdout, "{}", args);
-    });
-}
 
 /// Opens the first instance of the given protocol in exclusive mode.
 pub fn open_protocol_exclusive<T: uefi::proto::Protocol>()
@@ -107,10 +93,10 @@ fn efi_main() -> uefi::Status {
     mem::efi_mem_init();
 
     unsafe extern "Rust" {
-        fn main() -> Result<(), Error>;
+        fn lace_app_main() -> Result<(), Error>;
     }
 
-    match unsafe { main() } {
+    match unsafe { lace_app_main() } {
         Ok(()) => uefi::Status::SUCCESS,
         Err(e) => e.status(),
     }
