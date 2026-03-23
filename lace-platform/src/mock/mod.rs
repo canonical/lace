@@ -3,27 +3,31 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! Sandbox platform abstractions.
 
-extern crate std;
-
-use core::{fmt, ops::Deref};
-
 pub mod mem;
 pub mod tpm2;
 
 #[derive(Debug)]
 pub struct Error;
 
-pub fn print_impl(args: fmt::Arguments<'_>) {
+impl std::error::Error for Error {}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "mock platform error")
+    }
+}
+
+pub fn print_impl(args: std::fmt::Arguments<'_>) {
     std::print!("{}", args);
 }
 
-pub fn println_impl(args: fmt::Arguments<'_>) {
+pub fn println_impl(args: std::fmt::Arguments<'_>) {
     std::println!("{}", args);
 }
 
 struct EdidRef;
 
-impl Deref for EdidRef {
+impl std::ops::Deref for EdidRef {
     type Target = [u8];
 
     fn deref(&self) -> &Self::Target {
@@ -31,7 +35,7 @@ impl Deref for EdidRef {
     }
 }
 
-pub fn find_edid() -> Option<impl Deref<Target = [u8]>> {
+pub fn find_edid() -> Option<impl std::ops::Deref<Target = [u8]>> {
     Option::<EdidRef>::None
 }
 
@@ -49,10 +53,13 @@ pub mod dtb {
         todo!()
     }
 
+    /// Placeholder for a DTB installation receipt.
+    pub struct MockDtbReceipt;
+
     /// Installs a DTB in the system.
     /// # Safety
     /// This is not implemented for now.
-    pub unsafe fn install_dtb(_dtb: &[u8]) -> Result<(), super::Error> {
+    pub unsafe fn install_dtb(_dtb: &[u8]) -> Result<MockDtbReceipt, super::Error> {
         todo!()
     }
 }
@@ -60,6 +67,12 @@ pub mod dtb {
 pub mod linux {
     #[derive(Debug)]
     pub struct BootLinuxError;
+
+    impl core::fmt::Display for BootLinuxError {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            write!(f, "mock platform boot linux error")
+        }
+    }
 
     pub fn boot_linux(
         _kernel: &[u8],

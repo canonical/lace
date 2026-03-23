@@ -1,18 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only
 // Copyright (C) 2025, Canonical Ltd.
 // Authors: Mate Kukri <mate.kukri@canonical.com>
-// UEFI main application
+//! Stubble main application
 
-#![cfg_attr(target_os = "uefi", no_main)]
-#![cfg_attr(target_os = "uefi", no_std)]
+#![cfg_attr(not(feature = "mock"), no_std)]
+#![cfg_attr(not(feature = "mock"), no_main)]
 
+#[cfg(not(feature = "mock"))]
 extern crate alloc;
 
-use alloc::string::String;
-use lace_platform::{Error, debugln};
-
-#[cfg_attr(target_os = "uefi", lace_platform::entry)]
-fn main() -> Result<(), Error> {
+#[cfg(feature = "efi")]
+#[lace_platform::entry]
+fn main() -> Result<(), lace_platform::Error> {
     // Parse own loaded image
     let li = uefi::boot::open_protocol_exclusive::<uefi::proto::loaded_image::LoadedImage>(
         uefi::boot::image_handle(),
@@ -27,16 +26,19 @@ fn main() -> Result<(), Error> {
     };
 
     // Get external cmdline if any
-    let external_cmdline: Option<String> = match li.load_options_as_bytes() {
+    let external_cmdline = match li.load_options_as_bytes() {
         Some(bytes) => {
-            let s: String = core::char::decode_utf16(
+            let s: alloc::string::String = core::char::decode_utf16(
                 bytes
                     .chunks(2)
                     .map(|chunk| u16::from_ne_bytes([chunk[0], chunk[1]])),
             )
             .map(|r| {
                 r.unwrap_or_else(|err| {
-                    debugln!("WARNING: command line contains invalid character: {}", err);
+                    lace_platform::debugln!(
+                        "WARNING: command line contains invalid character: {}",
+                        err
+                    );
                     core::char::REPLACEMENT_CHARACTER
                 })
             })
@@ -55,4 +57,10 @@ fn main() -> Result<(), Error> {
     .expect("Failed to boot");
 
     unreachable!()
+}
+
+#[cfg(not(feature = "efi"))]
+#[lace_platform::entry]
+fn main() -> Result<(), lace_platform::Error> {
+    panic!("stubble image booting is not implemented on non-EFI platforms");
 }
