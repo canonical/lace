@@ -74,7 +74,6 @@ jobs:
 
   coverage:
     name: Coverage testing
-    if: ${{ secrets.COVERALLS_REPO_TOKEN != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -101,6 +100,9 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@v2
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+        if: ${{ github.event_name != 'pull_request' || env.COVERALLS_REPO_TOKEN != '' }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           files: "coverage/*.lcov"
