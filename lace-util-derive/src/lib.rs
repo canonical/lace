@@ -35,7 +35,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
-use syn::{parse_macro_input, Data, DeriveInput, Fields, ItemFn};
+use syn::{Data, DeriveInput, Fields, ItemFn, parse_macro_input};
 
 /// Derive macro for generating bidirectional conversions between enums and
 /// integer types.

@@ -1,8 +1,8 @@
 [package]
 name = "pewrap"
-version = "0.1.0"
-edition = "2024"
-license = "GPL-2.0-only OR GPL-3.0-only"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 
 [dependencies]
 clap = { version = "4.6.0", features = ["derive", "wrap_help"] }
