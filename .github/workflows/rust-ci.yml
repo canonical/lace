@@ -3,9 +3,9 @@ name: Rust CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
@@ -74,6 +74,7 @@ jobs:
 
   coverage:
     name: Coverage testing
+    if: ${{ secrets.COVERALLS_REPO_TOKEN != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -88,20 +89,18 @@ jobs:
 
       - name: Run coverage through tarpaulin
         run: |
+          set -e
           COVERAGE_DIR="coverage"
           mkdir -p "$COVERAGE_DIR"
           CRATES=$(cargo metadata --no-deps --format-version 1 \
             | jq -r '.packages[].name')
           for crate in $CRATES; do
-            if cargo tarpaulin -p "$crate" --out Lcov --output-dir "$COVERAGE_DIR" --no-fail-fast; then
-              mv "$COVERAGE_DIR/lcov.info" "$COVERAGE_DIR/$crate.lcov"
-            fi
+            cargo tarpaulin -p "$crate" --out Lcov --output-dir "$COVERAGE_DIR"
+            mv "$COVERAGE_DIR/lcov.info" "$COVERAGE_DIR/$crate.lcov"
           done
 
-      - name: Install Universal Coverage Reporter
-        run: curl -L https://coveralls.io/coveralls-linux.tar.gz | tar -xz
-
-      - name: Upload to Coveralls
-        env:
-          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
-        run: ./coveralls
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          files: "coverage/*.lcov"
