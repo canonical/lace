@@ -13,6 +13,7 @@ pub mod image;
 pub mod linux;
 pub mod mem;
 pub mod proto;
+pub mod tpm2;
 
 use proto::edid_discovered::EdidDiscoveredProtocol;
 

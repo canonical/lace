@@ -91,6 +91,8 @@ pub mod linux {
     pub use super::p::linux::{BootLinuxError, boot_linux};
 }
 
+pub use p::tpm2;
+
 /// Determine platform compatibility using firmware-provided device tree.
 /// # Safety
 /// This function is unsafe because the compatible string references the firmware DTB,
