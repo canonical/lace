@@ -3,9 +3,9 @@ name: Rust CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
@@ -71,3 +71,38 @@ jobs:
 
       - name: Run unit tests
         run: ./scripts/cargo_ci.py test --workspace
+
+  coverage:
+    name: Coverage testing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Run coverage through tarpaulin
+        run: |
+          set -e
+          COVERAGE_DIR="coverage"
+          mkdir -p "$COVERAGE_DIR"
+          CRATES=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[].name')
+          for crate in $CRATES; do
+            cargo tarpaulin -p "$crate" --out Lcov --output-dir "$COVERAGE_DIR"
+            mv "$COVERAGE_DIR/lcov.info" "$COVERAGE_DIR/$crate.lcov"
+          done
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+        if: ${{ github.event_name != 'pull_request' || env.COVERALLS_REPO_TOKEN != '' }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          files: "coverage/*.lcov"
