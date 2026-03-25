@@ -11,6 +11,7 @@ use lace_util::smbios::{Smbios3EntryPoint, SmbiosEntryPoint};
 pub mod allocator;
 pub mod console;
 pub mod e820;
+pub mod fs;
 pub mod int;
 pub mod linux;
 pub mod tpm2;
@@ -19,14 +20,22 @@ pub use console::{print_impl, println_impl};
 
 #[derive(Debug)]
 pub enum Error {
+    Disk(fs::DiskError),
     Other,
 }
 
 impl core::fmt::Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
+            Error::Disk(e) => write!(f, "Disk error: {:?}", e),
             Error::Other => write!(f, "Other error"),
         }
+    }
+}
+
+impl From<fs::DiskError> for Error {
+    fn from(e: fs::DiskError) -> Self {
+        Error::Disk(e)
     }
 }
 

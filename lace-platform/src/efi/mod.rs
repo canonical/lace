@@ -8,6 +8,7 @@ use lace_util::smbios::{Smbios3EntryPoint, SmbiosEntryPoint};
 
 pub mod console;
 pub mod dtb;
+pub mod fs;
 pub mod image;
 pub mod linux;
 pub mod mem;
@@ -18,6 +19,9 @@ use proto::edid_discovered::EdidDiscoveredProtocol;
 
 /// Platform specific error type
 pub use uefi::Error;
+
+/// Re-export common filesystem types from the base module
+pub use super::fs::base::{BlockDevice, DirEntry, File, Filesystem, FsError};
 
 /// Opens the first instance of the given protocol in exclusive mode.
 pub fn open_protocol_exclusive<T: uefi::proto::Protocol>()

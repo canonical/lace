@@ -6,15 +6,19 @@ license.workspace = true
 
 [dependencies]
 bitflags.workspace = true
+ext4-view = { workspace = true, optional = true }
 lace-util = { path = "../lace-util", default-features = false }
 lace-util-derive = { path = "../lace-util-derive" }
 linked_list_allocator = { workspace = true, optional = true }
 spin.workspace = true
+zerocopy = { workspace = true, features = ["derive"] }
 uefi = { workspace = true, features = ["global_allocator", "panic_handler"], optional = true }
 uefi-raw = { workspace = true, optional = true }
 
 [features]
-default = ["mock"]
+default = ["mock", "ext4"]
 bios = ["dep:linked_list_allocator"]
 efi = ["dep:uefi", "dep:uefi-raw"]
+ext4 = ["ext4-view", "fs-impls"]
+fs-impls = []
 mock = []

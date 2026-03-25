@@ -102,6 +102,9 @@ pub mod dtb {
     pub use super::p::dtb::{find_dtb, install_dtb};
 }
 
+// Unified filesystem module re-exporting common types and platform-specific functions
+pub mod fs;
+
 pub mod linux {
     pub use super::p::linux::{BootLinuxError, boot_linux};
 }
