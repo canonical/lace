@@ -97,12 +97,8 @@ jobs:
           set -e
           COVERAGE_DIR="coverage"
           mkdir -p "$COVERAGE_DIR"
-          CRATES=$(cargo metadata --no-deps --format-version 1 \
-            | jq -r '.packages[].name')
-          for crate in $CRATES; do
-            cargo tarpaulin -p "$crate" --out Lcov --output-dir "$COVERAGE_DIR"
-            mv "$COVERAGE_DIR/lcov.info" "$COVERAGE_DIR/$crate.lcov"
-          done
+          cargo tarpaulin --out Lcov --output-dir "$COVERAGE_DIR"
+          mv "$COVERAGE_DIR/lcov.info" "$COVERAGE_DIR/coverage.lcov"
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@v2
