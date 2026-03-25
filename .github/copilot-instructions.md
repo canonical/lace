@@ -92,10 +92,10 @@ All Lace code uses dual licensing (update 2025 for the current year)
 pre-commit run --all-files
 
 # Format code only (if not using pre-commit)
-./scripts/cargo_ci.py fmt --all
+cargo fmt
 
 # Run tests only (if not using pre-commit)
-./scripts/cargo_ci.py test --workspace --exclude lace-stubble --exclude fakeedid
+cargo test
 ```
 
 **Note**: Pre-commit hooks automatically run cargo fmt, cargo check, cargo clippy, and cargo test, so you typically only need to run `pre-commit run --all-files` before committing.
@@ -103,16 +103,9 @@ pre-commit run --all-files
 ### CI Pipeline
 
 GitHub Actions runs four jobs:
-1. **check**: `cargo check` for all workspace members
-2. **fmt**: Format checking with `rustfmt`
-3. **clippy**: Linting with **all warnings as errors** (`-D warnings`)
-4. **test**: Unit tests
-
-### The cargo_ci.py Wrapper
-
-The `./scripts/cargo_ci.py` wrapper is used instead of direct `cargo` commands because:
-- It splits packages into multiple runs to avoid Cargo feature unification issues
-- Use `--workspace` to run on all members, `--exclude` to skip specific crates
+1. **fmt**: Format checking with `rustfmt`
+2. **clippy**: Linting with **all warnings as errors** (`-D warnings`)
+3. **test**: Unit tests
 
 ## Common Issues and Workarounds
 
@@ -160,10 +153,11 @@ Reference issues or specs as needed.
 1. **Understand the codebase first** - Read related code and tests
 2. **Follow the style guide** - Check `STYLE.md` and existing code patterns
 3. **Add/update tests** - Unit tests in `#[cfg(test)] mod test`
-4. **Run pre-commit checks before committing**: `pre-commit run --all-files` (runs formatting, linting, compilation checks, and unit tests)
-5. **Commit with proper message format**
+4. **Run pre-commit checks before committing**: `pre-commit run --all-files` (runs formatting)
+5. **Run unit tests**: `cargo test`
+6. **Commit with proper message format**
 
-**Note**: Pre-commit hooks are configured in `.pre-commit-config.yaml` and run automatically on `git commit` if installed. They include cargo fmt, cargo check, cargo clippy, cargo test, and file quality checks. Always run `pre-commit run --all-files` before using **report_progress** (an internal progress-reporting command used in some automated workflows) to ensure all checks pass; if you do not use that workflow, you can ignore this part of the note.
+**Note**: Pre-commit hooks are configured in `.pre-commit-config.yaml` and run automatically on `git commit` if installed.
 
 ### Before Submitting PR
 
@@ -203,7 +197,6 @@ Reference issues or specs as needed.
 
 ## Tips for Efficient Development
 
-1. **Use `cargo_ci.py` instead of `cargo`** directly for consistency with CI
 4. **Check existing tests** for patterns before writing new ones
 5. **Reference specifications** in comments when implementing protocols/standards
 6. **Don't rearrange code** unnecessarily - preserve existing organization
