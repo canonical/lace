@@ -19,7 +19,7 @@ repos:
       - id: cargo-fmt
         name: cargo fmt
         description: Format Rust code with rustfmt
-        entry: ./scripts/cargo_ci.py fmt --all
+        entry: cargo fmt --all
         language: system
         types: [rust]
         pass_filenames: false

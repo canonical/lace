@@ -14,20 +14,6 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    name: Cargo Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Install Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-
-      - name: Run cargo check
-        run: ./scripts/cargo_ci.py check --workspace
-
   fmt:
     name: Format Check
     runs-on: ubuntu-latest
@@ -41,7 +27,7 @@ jobs:
           components: rustfmt
 
       - name: Check formatting
-        run: ./scripts/cargo_ci.py fmt --all -- --check
+        run: cargo fmt --all -- --check
 
   clippy:
     name: Clippy Lints
@@ -56,7 +42,27 @@ jobs:
           components: clippy
 
       - name: Run clippy
-        run: ./scripts/cargo_ci.py clippy --workspace -- -D warnings
+        run: cargo clippy --workspace -- -D warnings
+
+  clippy-platform:
+    name: "Clippy: ${{ matrix.package }} (${{ matrix.feature }})"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [lace-platform, lace-stubble]
+        feature: [efi]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Run clippy
+        run: cargo clippy -p ${{ matrix.package }} --no-default-features --features ${{ matrix.feature }} -- -D warnings
 
   test:
     name: Unit tests
@@ -70,7 +76,7 @@ jobs:
           toolchain: stable
 
       - name: Run unit tests
-        run: ./scripts/cargo_ci.py test --workspace
+        run: cargo test --workspace
 
   coverage:
     name: Coverage testing
