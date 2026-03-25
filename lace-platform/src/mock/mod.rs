@@ -57,6 +57,8 @@ pub mod dtb {
     }
 }
 
+pub mod fs;
+
 pub mod linux {
     #[derive(Debug)]
     pub struct BootLinuxError;
