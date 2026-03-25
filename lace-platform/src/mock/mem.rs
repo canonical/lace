@@ -233,7 +233,10 @@ mod tests {
             let guard = TEST_LOCK
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
-            let mut backing = vec![fill; pages * PAGE_SIZE];
+            let len = pages
+                .checked_mul(PAGE_SIZE)
+                .expect("TestPool::with_fill: pages * PAGE_SIZE overflow");
+            let mut backing = vec![fill; len];
             let ptr = NonNull::new(backing.as_mut_ptr()).unwrap();
             *MOCK_PAGE_POOL.lock() = Some(MockPagePool {
                 memory: ptr,
