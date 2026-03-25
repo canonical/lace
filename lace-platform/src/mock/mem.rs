@@ -230,7 +230,9 @@ mod tests {
 
         /// Create a pool of `pages` pages, each byte set to `fill`.
         fn with_fill(pages: usize, fill: u8) -> Self {
-            let guard = TEST_LOCK.lock().unwrap();
+            let guard = TEST_LOCK
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             let mut backing = vec![fill; pages * PAGE_SIZE];
             let ptr = NonNull::new(backing.as_mut_ptr()).unwrap();
             *MOCK_PAGE_POOL.lock() = Some(MockPagePool {
