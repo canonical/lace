@@ -210,22 +210,50 @@ pub fn nx_required() -> bool {
 mod tests {
     use super::*;
 
-    // Tests share the global pool and must run serially (--test-threads=1).
+    /// Serialization lock for tests that share `MOCK_PAGE_POOL`.
+    static TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
-    /// Initialize a fresh pool for testing.
-    fn init_test_pool(pool: &mut [u8]) {
-        let ptr = NonNull::new(pool.as_mut_ptr()).unwrap();
-        *MOCK_PAGE_POOL.lock() = Some(MockPagePool {
-            memory: ptr,
-            size: pool.len(),
-            watermark: 0,
-        });
+    /// RAII guard that serializes access to the global mock page pool.
+    ///
+    /// Acquiring a `TestPool` locks out other tests, installs a fresh
+    /// pool backed by heap memory, and tears it down on drop.
+    struct TestPool {
+        _guard: std::sync::MutexGuard<'static, ()>,
+        _backing: Vec<u8>,
+    }
+
+    impl TestPool {
+        /// Create a zero-filled pool of `pages` pages.
+        fn new(pages: usize) -> Self {
+            Self::with_fill(pages, 0)
+        }
+
+        /// Create a pool of `pages` pages, each byte set to `fill`.
+        fn with_fill(pages: usize, fill: u8) -> Self {
+            let guard = TEST_LOCK.lock().unwrap();
+            let mut backing = vec![fill; pages * PAGE_SIZE];
+            let ptr = NonNull::new(backing.as_mut_ptr()).unwrap();
+            *MOCK_PAGE_POOL.lock() = Some(MockPagePool {
+                memory: ptr,
+                size: backing.len(),
+                watermark: 0,
+            });
+            Self {
+                _guard: guard,
+                _backing: backing,
+            }
+        }
+    }
+
+    impl Drop for TestPool {
+        fn drop(&mut self) {
+            *MOCK_PAGE_POOL.lock() = None;
+        }
     }
 
     #[test]
     fn test_basic_allocation() {
-        let mut pool = [0u8; 16 * PAGE_SIZE];
-        init_test_pool(&mut pool);
+        let _pool = TestPool::new(16);
 
         let alloc = unsafe {
             PageAllocation::new_uninit(PageAllocationConstraint::AnyAddress, None, 1, None)
@@ -237,8 +265,7 @@ mod tests {
 
     #[test]
     fn test_zeroed_allocation() {
-        let mut pool = [0xffu8; 16 * PAGE_SIZE];
-        init_test_pool(&mut pool);
+        let _pool = TestPool::with_fill(16, 0xff);
 
         let alloc = PageAllocation::new_zeroed(PageAllocationConstraint::AnyAddress, None, 1, None);
         assert!(alloc.is_ok());
@@ -250,8 +277,7 @@ mod tests {
 
     #[test]
     fn test_alignment() {
-        let mut pool = [0u8; 64 * PAGE_SIZE];
-        init_test_pool(&mut pool);
+        let _pool = TestPool::new(64);
 
         // First allocation to move watermark
         let _ = unsafe {
@@ -277,8 +303,7 @@ mod tests {
 
     #[test]
     fn test_out_of_memory() {
-        let mut pool = [0u8; PAGE_SIZE];
-        init_test_pool(&mut pool);
+        let _pool = TestPool::new(1);
 
         // Try to allocate more than the pool size
         let alloc = unsafe {
@@ -289,8 +314,7 @@ mod tests {
 
     #[test]
     fn test_invalid_alignment() {
-        let mut pool = [0u8; 16 * PAGE_SIZE];
-        init_test_pool(&mut pool);
+        let _pool = TestPool::new(16);
 
         // Alignment must be power of two
         let alloc = unsafe {
@@ -301,8 +325,7 @@ mod tests {
 
     #[test]
     fn test_alignment_too_large() {
-        let mut pool = [0u8; 16 * PAGE_SIZE];
-        init_test_pool(&mut pool);
+        let _pool = TestPool::new(16);
 
         // Alignment exceeds 4 MiB limit
         let alloc = unsafe {
@@ -318,8 +341,7 @@ mod tests {
 
     #[test]
     fn test_unsupported_constraint() {
-        let mut pool = [0u8; 16 * PAGE_SIZE];
-        init_test_pool(&mut pool);
+        let _pool = TestPool::new(16);
 
         let alloc = unsafe {
             PageAllocation::new_uninit(PageAllocationConstraint::MaxAddress(0x1000), None, 1, None)
