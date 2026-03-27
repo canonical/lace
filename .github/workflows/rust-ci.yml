@@ -51,7 +51,7 @@ jobs:
       fail-fast: false
       matrix:
         package: [lace-platform, lace-stubble]
-        feature: [efi]
+        feature: [efi, bios]
     steps:
       - uses: actions/checkout@v6
 

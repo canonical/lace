@@ -22,6 +22,7 @@ bitflags = "2.11.0"
 clap = { version = "4.6.0", features = ["derive", "wrap_help"] }
 clap_mangen = "0.2"
 fdt = { version = "0.1.5", default-features = false }
+linked_list_allocator = { version = "0.10.5" }
 proc-macro2 = "1.0"
 quote = "1.0"
 regex = "1.12.3"

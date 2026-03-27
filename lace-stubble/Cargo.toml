@@ -12,4 +12,5 @@ uefi = { workspace = true, optional = true }
 [features]
 default = ["mock"]
 efi = ["lace-platform/efi", "dep:uefi"]
+bios = ["lace-platform/bios"]
 mock = ["lace-platform/mock"]

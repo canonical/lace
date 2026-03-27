@@ -15,12 +15,20 @@ use lace_util::fdt::node::FdtNode;
 // but they help to clarify the expected API surface for each platform.
 pub mod iface;
 
+// Architecture-specific modules
+#[cfg(target_arch = "x86_64")]
+pub mod amd64;
+
 // Platform implementations
+#[cfg(feature = "bios")]
+pub mod bios;
 #[cfg(feature = "efi")]
 pub mod efi;
 #[cfg(feature = "mock")]
 pub mod mock;
 
+#[cfg(feature = "bios")]
+use bios as p;
 #[cfg(feature = "efi")]
 use efi as p;
 #[cfg(feature = "mock")]

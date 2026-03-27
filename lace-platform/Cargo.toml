@@ -8,11 +8,13 @@ license.workspace = true
 bitflags.workspace = true
 lace-util = { path = "../lace-util", default-features = false }
 lace-util-derive = { path = "../lace-util-derive" }
+linked_list_allocator = { workspace = true, optional = true }
 spin.workspace = true
 uefi = { workspace = true, features = ["global_allocator", "panic_handler"], optional = true }
 uefi-raw = { workspace = true, optional = true }
 
 [features]
 default = ["mock"]
+bios = ["dep:linked_list_allocator"]
 efi = ["dep:uefi", "dep:uefi-raw"]
 mock = []
