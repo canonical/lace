@@ -6,6 +6,7 @@ members = [
     "lace-stubble",
     "lace-util",
     "lace-util-derive",
+    "lace-util-derive-impl",
     "tools/collect-hwids",
     "tools/fakeedid",
     "tools/pewrap",

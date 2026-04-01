@@ -289,11 +289,19 @@ name = "lace-util"
 version = "0.1.0"
 dependencies = [
  "fdt",
+ "lace-util-derive",
  "zerocopy",
 ]
 
 [[package]]
 name = "lace-util-derive"
+version = "0.1.0"
+dependencies = [
+ "lace-util-derive-impl",
+]
+
+[[package]]
+name = "lace-util-derive-impl"
 version = "0.1.0"
 dependencies = [
  "proc-macro2",
