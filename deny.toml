@@ -113,9 +113,7 @@ exceptions = [
     { allow = ["GPL-2.0-only"], crate = "lace-platform" },
     { allow = ["GPL-2.0-only"], crate = "lace-util" },
     { allow = ["GPL-2.0-only"], crate = "lace-util-derive" },
-    { allow = ["GPL-2.0-only"], crate = "lace-fit" },
-    { allow = ["GPL-2.0-only"], crate = "lace-boot" },
-    { allow = ["GPL-2.0-only"], crate = "u-boot-sys" },
+    { allow = ["GPL-2.0-only"], crate = "lace-util-derive-impl" },
 ]
 
 # Some crates don't have (easily) machine readable licensing information,

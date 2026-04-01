@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only
+[package]
+name = "lace-util-derive-impl"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+syn.workspace = true
+quote.workspace = true
+proc-macro2.workspace = true
