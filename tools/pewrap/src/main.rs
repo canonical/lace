@@ -8,9 +8,7 @@ use lace_util::peimage::*;
 use lace_util::*;
 use pewrap::cli::Args;
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::VecDeque, fmt::Display, fs::DirEntry, io, mem::offset_of, path::Path, process,
-};
+use std::{collections::VecDeque, fs::DirEntry, io, mem::offset_of, path::Path, process};
 use zerocopy::IntoBytes;
 
 fn main() {
@@ -200,24 +198,17 @@ struct HwidJson {
 }
 
 /// Errors that can occur when generating CHID mappings from HWID JSON
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Display)]
 enum GenerateChidMappingsError {
+    #[display("unknown HWID type: {}")]
     UnknownType(String),
+    #[display("{}")]
     GuidParseError(GuidParseError),
 }
 
 impl From<GuidParseError> for GenerateChidMappingsError {
     fn from(e: GuidParseError) -> Self {
         GenerateChidMappingsError::GuidParseError(e)
-    }
-}
-
-impl Display for GenerateChidMappingsError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            GenerateChidMappingsError::UnknownType(t) => write!(f, "unknown HWID type: {}", t),
-            GenerateChidMappingsError::GuidParseError(e) => e.fmt(f),
-        }
     }
 }
 
@@ -305,17 +296,10 @@ struct PeRebuilder<'s> {
     sections: Vec<(SectionHeader, Vec<u8>)>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Display)]
 enum PeRebuildError {
+    #[display("PE headers exceed maximum allowed size")]
     HeadersTooLarge,
-}
-
-impl Display for PeRebuildError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PeRebuildError::HeadersTooLarge => write!(f, "PE headers exceed maximum allowed size"),
-        }
-    }
 }
 
 impl<'s> PeRebuilder<'s> {

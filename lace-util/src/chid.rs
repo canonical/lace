@@ -34,6 +34,7 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::mem::size_of;
+use lace_util_derive::Display;
 use zerocopy::{FromBytes, IntoBytes};
 
 /// CHID namespace GUID used as the seed for SHA-1 hashing per RFC 9562
@@ -161,19 +162,12 @@ pub const CHID_TYPES: [usize; 18] = [
 /// the source is not available on this system.
 pub type ChidSources = [Option<String>; CHID_SOURCE_MAX];
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Display)]
 pub enum ChidSourcesError {
+    #[display("{}")]
     SmbiosError(SmbiosParseError),
+    #[display("{}")]
     EdidError(EdidParseError),
-}
-
-impl Display for ChidSourcesError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            ChidSourcesError::SmbiosError(e) => Display::fmt(e, f),
-            ChidSourcesError::EdidError(e) => Display::fmt(e, f),
-        }
-    }
 }
 
 impl From<SmbiosParseError> for ChidSourcesError {

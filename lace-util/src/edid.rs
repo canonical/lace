@@ -3,7 +3,7 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 
 use alloc::string::String;
-use core::fmt::{self, Display, Formatter};
+use lace_util_derive::Display;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 const EDID_PATTERN: [u8; 8] = [0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00];
@@ -29,21 +29,14 @@ pub struct ParsedEdid {
     header: EdidHeader,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Display)]
 pub enum EdidParseError {
+    #[display("EDID data is too small")]
     InvalidSize,
+    #[display("EDID header is invalid")]
     InvalidHeader,
+    #[display("Panel ID could not be found")]
     InvalidPanelId,
-}
-
-impl Display for EdidParseError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            EdidParseError::InvalidSize => write!(f, "EDID data is too small"),
-            EdidParseError::InvalidHeader => write!(f, "EDID header is invalid"),
-            EdidParseError::InvalidPanelId => write!(f, "Panel ID could not be found"),
-        }
-    }
 }
 
 impl ParsedEdid {

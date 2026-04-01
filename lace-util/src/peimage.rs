@@ -3,7 +3,8 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 
 use crate::align_up;
-use core::{fmt::Display, mem::offset_of};
+use core::mem::offset_of;
+use lace_util_derive::Display;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 pub const DOS_SIGNATURE: u16 = b'M' as u16 | (b'Z' as u16) << 8;
@@ -174,23 +175,14 @@ pub struct VirtualSectionIterator<'a> {
     index: usize,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Display)]
 pub enum PeError {
+    #[display("image truncated")]
     Truncated,
+    #[display("image has bad header")]
     BadHeader,
+    #[display("image has relocations, which are not yet supported")]
     RelocationsNotYetSupported,
-}
-
-impl Display for PeError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::Truncated => write!(f, "image truncated"),
-            Self::BadHeader => write!(f, "image has bad header"),
-            Self::RelocationsNotYetSupported => {
-                write!(f, "image has relocations, which are not yet supported")
-            }
-        }
-    }
 }
 
 pub fn parse_pe<'a>(s: &'a [u8]) -> Result<PeRef<'a>, PeError> {

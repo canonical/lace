@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 fdt.workspace = true
+lace-util-derive = { path = "../lace-util-derive" }
 zerocopy = { workspace = true, features = ["derive"] }
 
 [features]

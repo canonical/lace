@@ -7,16 +7,13 @@ pub mod console;
 pub mod mem;
 pub mod tpm2;
 
-#[derive(Debug)]
+use lace_util::Display;
+
+#[derive(Debug, Display)]
+#[display("mock platform error")]
 pub struct Error;
 
 impl std::error::Error for Error {}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "mock platform error")
-    }
-}
 
 struct EdidRef;
 
@@ -60,14 +57,11 @@ pub mod dtb {
 pub mod fs;
 
 pub mod linux {
-    #[derive(Debug)]
-    pub struct BootLinuxError;
+    use lace_util::Display;
 
-    impl core::fmt::Display for BootLinuxError {
-        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-            write!(f, "mock platform boot linux error")
-        }
-    }
+    #[derive(Debug, Display)]
+    #[display("mock platform boot linux error")]
+    pub struct BootLinuxError;
 
     pub fn boot_linux(
         _kernel: &[u8],

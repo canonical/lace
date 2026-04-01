@@ -9,22 +9,16 @@ use crate::bios::e820;
 use alloc::boxed::Box;
 use alloc::vec;
 use core::mem::size_of;
+use lace_util::Display;
 
-#[derive(Debug)]
+#[derive(Debug, Display)]
 pub enum BootLinuxError {
+    #[display("Load error")]
     LoadError,
+    #[display("Unsupported")]
     Unsupported,
+    #[display("I/O error")]
     IoError,
-}
-
-impl core::fmt::Display for BootLinuxError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            BootLinuxError::LoadError => write!(f, "Load error"),
-            BootLinuxError::Unsupported => write!(f, "Unsupported"),
-            BootLinuxError::IoError => write!(f, "IO Error"),
-        }
-    }
 }
 
 pub fn boot_linux(
