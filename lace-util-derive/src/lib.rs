@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only
 // Copyright (C) 2026, Canonical Ltd.
 
-//! Procedural macros for deriving enum utilities.
+//! Procedural macros for deriving utilities.
 //!
-//! This crate provides two derive macros for enums:
+//! This crate provides derive macros:
 //!
+//! - [`Display`]: Generates a [`core::fmt::Display`] implementation
 //! - [`NumEnum`]: Generates bidirectional conversions between enums and integer
 //!   types
-//! - [`NamedEnum`]: Generates methods for accessing variant names
+//! - [`NamedEnum`]: Generates methods for accessing enum variant names
 //!
 //! # Examples
 //!
@@ -243,4 +244,93 @@ pub fn derive_named_enum(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
     impl_::entry::apply(args.into(), input.into()).into()
+}
+
+/// Derive macro for generating [`core::fmt::Display`] implementations for
+/// enums and structs.
+///
+/// Every enum variant and every struct must have a `#[display("format
+/// string")]` attribute providing a [`format!`]-compatible format string. All
+/// fields are passed **positionally** to the format string: tuple-variant /
+/// tuple-struct fields are bound as `_0`, `_1`, ...; named-field variants
+/// and named-field structs pass fields as **named** arguments, so the format
+/// string can reference them by name (e.g., `{field}`). Positional (`{}`)
+/// and indexed (`{0}`) placeholders also work for all field kinds.
+///
+/// # Examples
+///
+/// ## Enums
+///
+/// ```
+/// use lace_util_derive::Display;
+///
+/// #[derive(Display, Debug)]
+/// enum MyError {
+///     #[display("not found")]
+///     NotFound,
+///     #[display("I/O error: {}")]
+///     Io(std::fmt::Error),
+///     #[display("code {}: {}")]
+///     WithCode(u32, std::fmt::Error),
+/// }
+///
+/// assert_eq!(MyError::NotFound.to_string(), "not found");
+/// assert_eq!(
+///     MyError::Io(std::fmt::Error).to_string(),
+///     "I/O error: an error occurred when formatting an argument"
+/// );
+/// assert_eq!(
+///     MyError::WithCode(42, std::fmt::Error).to_string(),
+///     "code 42: an error occurred when formatting an argument"
+/// );
+/// ```
+///
+/// ## Unit struct
+///
+/// ```
+/// use lace_util_derive::Display;
+///
+/// #[derive(Display, Debug)]
+/// #[display("something went wrong")]
+/// struct MyError;
+///
+/// assert_eq!(MyError.to_string(), "something went wrong");
+/// ```
+///
+/// ## Tuple struct
+///
+/// ```
+/// use lace_util_derive::Display;
+///
+/// #[derive(Display)]
+/// #[display("value: {}")]
+/// struct Wrapper(u32);
+///
+/// assert_eq!(Wrapper(42).to_string(), "value: 42");
+/// ```
+///
+/// ## Named-field struct
+///
+/// ```
+/// use lace_util_derive::Display;
+///
+/// #[derive(Display)]
+/// #[display("{key}: {value}")]
+/// struct KeyValue {
+///     key: &'static str,
+///     value: u32,
+/// }
+///
+/// assert_eq!(KeyValue { key: "answer", value: 42 }.to_string(), "answer: 42");
+/// ```
+///
+/// # Compile-time errors
+///
+/// This macro will emit a compiler error (via `compile_error!`) if:
+/// - It is applied to a union type
+/// - Any enum variant is missing a `#[display("...")]` attribute
+/// - A struct is missing a `#[display("...")]` attribute
+#[proc_macro_derive(Display, attributes(display))]
+pub fn derive_display(input: TokenStream) -> TokenStream {
+    impl_::display::derive(input.into()).into()
 }
