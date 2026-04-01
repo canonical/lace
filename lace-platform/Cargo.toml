@@ -22,3 +22,6 @@ efi = ["dep:uefi", "dep:uefi-raw"]
 ext4 = ["ext4-view", "fs-impls"]
 fs-impls = []
 mock = []
+
+[dev-dependencies]
+lace-util = { path = "../lace-util", features = ["std"] }
