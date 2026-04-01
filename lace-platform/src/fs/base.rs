@@ -10,32 +10,25 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::fmt;
+use lace_util::Display;
 
 use crate::Error;
 
 /// Errors that can occur during filesystem operations.
-#[derive(Debug)]
+#[derive(Debug, Display)]
 pub enum FsError {
     /// Platform I/O error (wraps `DiskError` on BIOS, `uefi::Error` on EFI).
+    #[display("I/O error: {}")]
     Io(Error),
     /// Data format or validation error (invalid partition table, bad superblock, etc.)
+    #[display("invalid data")]
     Invalid,
     /// File not found
+    #[display("not found")]
     NotFound,
     /// Not a directory
+    #[display("not a directory")]
     NotDirectory,
-}
-
-impl fmt::Display for FsError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FsError::Io(e) => write!(f, "I/O error: {}", e),
-            FsError::Invalid => write!(f, "invalid data"),
-            FsError::NotFound => write!(f, "not found"),
-            FsError::NotDirectory => write!(f, "not a directory"),
-        }
-    }
 }
 
 impl From<Error> for FsError {

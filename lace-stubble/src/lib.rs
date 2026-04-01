@@ -8,33 +8,24 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
-use core::fmt::Display;
 use lace_platform::debugln;
 use lace_platform::dtb::install_dtb;
 use lace_platform::linux::boot_linux;
 use lace_platform::tpm2::{self, EventType, ExtendFlags};
+use lace_util::Display;
 use lace_util::peimage::{PeError, SectionHeader, parse_pe};
 
 /// Errors that can occur when booting a Stubble image.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Display)]
 pub enum BootStubbleError {
+    #[display("PE parsing error: {}")]
     PeError(PeError),
+    #[display("Duplicate section in Stubble image: {}")]
     DuplicateSection(&'static str),
+    #[display("Not a Stubble image")]
     NotAStubbleImage,
+    #[display("Invalid command line encoding")]
     InvalidCommandLine,
-}
-
-impl Display for BootStubbleError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            BootStubbleError::PeError(e) => write!(f, "PE parsing error: {}", e),
-            BootStubbleError::DuplicateSection(name) => {
-                write!(f, "Duplicate section in Stubble image: {}", name)
-            }
-            BootStubbleError::NotAStubbleImage => write!(f, "Not a Stubble image"),
-            BootStubbleError::InvalidCommandLine => write!(f, "Invalid command line encoding"),
-        }
-    }
 }
 
 /// A stubble image can be handled either already loaded or in raw form

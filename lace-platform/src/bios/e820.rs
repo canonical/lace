@@ -3,7 +3,7 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 
 use super::int::{BiosRegisters, bios_call};
-use core::fmt;
+use lace_util::Display;
 
 #[repr(C, packed)]
 #[derive(Debug, Default, Clone, Copy)]
@@ -20,13 +20,19 @@ impl E820Entry {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Display, Clone, Copy, PartialEq, Eq)]
 pub enum E820MemoryType {
+    #[display("Usable")]
     Usable,
+    #[display("Reserved")]
     Reserved,
+    #[display("ACPI Reclaim")]
     AcpiReclaim,
+    #[display("ACPI NVS")]
     AcpiNvs,
+    #[display("Bad Memory")]
     BadMemory,
+    #[display("Unknown (0x{:X})")]
     Unknown(u32),
 }
 
@@ -39,19 +45,6 @@ impl From<u32> for E820MemoryType {
             4 => E820MemoryType::AcpiNvs,
             5 => E820MemoryType::BadMemory,
             other => E820MemoryType::Unknown(other),
-        }
-    }
-}
-
-impl fmt::Display for E820MemoryType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            E820MemoryType::Usable => write!(f, "Usable"),
-            E820MemoryType::Reserved => write!(f, "Reserved"),
-            E820MemoryType::AcpiReclaim => write!(f, "ACPI Reclaim"),
-            E820MemoryType::AcpiNvs => write!(f, "ACPI NVS"),
-            E820MemoryType::BadMemory => write!(f, "Bad Memory"),
-            E820MemoryType::Unknown(v) => write!(f, "Unknown (0x{:X})", v),
         }
     }
 }

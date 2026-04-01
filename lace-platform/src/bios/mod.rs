@@ -6,6 +6,7 @@
 
 use crate::println;
 use core::arch::global_asm;
+use lace_util::Display;
 use lace_util::smbios::{Smbios3EntryPoint, SmbiosEntryPoint};
 
 pub mod allocator;
@@ -18,19 +19,12 @@ pub mod tpm2;
 
 pub use console::{print_impl, println_impl};
 
-#[derive(Debug)]
+#[derive(Debug, Display)]
 pub enum Error {
+    #[display("Disk error: {:?}")]
     Disk(fs::DiskError),
+    #[display("Other error")]
     Other,
-}
-
-impl core::fmt::Display for Error {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Error::Disk(e) => write!(f, "Disk error: {:?}", e),
-            Error::Other => write!(f, "Other error"),
-        }
-    }
 }
 
 impl From<fs::DiskError> for Error {

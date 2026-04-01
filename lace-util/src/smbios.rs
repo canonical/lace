@@ -2,7 +2,7 @@
 // Copyright (C) 2025, Canonical Ltd.
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 
-use core::fmt::Display;
+use crate::Display;
 use core::marker::PhantomData;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
@@ -117,14 +117,9 @@ pub struct SmbiosTableType3 {
     pub asset_tag_number: u8,
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Display)]
+#[display("Invalid SMBIOS table")]
 pub struct SmbiosParseError;
-
-impl Display for SmbiosParseError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Invalid SMBIOS table")
-    }
-}
 
 pub struct SmbiosTable<'s, T: FromBytes + KnownLayout + Immutable> {
     table_type: PhantomData<T>,

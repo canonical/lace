@@ -3,6 +3,7 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! Memory related sandbox platform abstractions.
 
+use lace_util::Display;
 use spin::Mutex;
 
 use crate::iface::mem::{MemAttributes, PageAllocationConstraint, PageAllocationIface};
@@ -27,31 +28,18 @@ const DEFAULT_ALIGNMENT: usize = PAGE_SIZE;
 const MAX_ALIGNMENT: usize = 4 * 1024 * 1024;
 
 /// Error type for page allocation failures in the mock platform.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Display, PartialEq, Eq)]
 pub enum PageAllocationFailure {
+    #[display("Out of memory")]
     OutOfMemory,
+    #[display("Unsupported page allocation constraint")]
     UnsupportedConstraint,
     /// The requested alignment is not a power of two.
+    #[display("Alignment must be a power of two")]
     InvalidAlignment,
     /// The requested alignment exceeds the maximum (4 MiB).
+    #[display("Alignment exceeds maximum of 4 MiB")]
     AlignmentTooLarge,
-}
-
-impl core::fmt::Display for PageAllocationFailure {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::OutOfMemory => write!(f, "Out of memory"),
-            Self::UnsupportedConstraint => {
-                write!(f, "Unsupported page allocation constraint")
-            }
-            Self::InvalidAlignment => {
-                write!(f, "Alignment must be a power of two")
-            }
-            Self::AlignmentTooLarge => {
-                write!(f, "Alignment exceeds maximum of 4 MiB")
-            }
-        }
-    }
 }
 
 /// Memory pool for the mock page allocator.

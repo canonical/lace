@@ -6,7 +6,8 @@
 use super::mem::{
     MemoryType, PageAllocation, PageAllocationConstraint, PageAllocationIface, page_count,
 };
-use core::{ffi::c_void, fmt::Display};
+use core::ffi::c_void;
+use lace_util::Display;
 use lace_util::{align_up, peimage};
 
 /// Represents a loaded EFI image.
@@ -17,29 +18,16 @@ pub struct LaceLoadedImage {
 }
 
 /// Errors that can occur while loading an EFI image.
-#[derive(Debug)]
+#[derive(Debug, Display)]
 pub enum LaceLoadImageError {
+    #[display("PE parsing error: {}")]
     PeError(peimage::PeError),
+    #[display("NX compatibility policy violation")]
     NxPolicyViolation,
+    #[display("memory allocation error: {}")]
     MemoryAllocationError(uefi::Error),
+    #[display("failed to change memory attributes: {}")]
     MemoryAttributeError(uefi::Error),
-}
-
-impl Display for LaceLoadImageError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            LaceLoadImageError::PeError(e) => write!(f, "PE parsing error: {}", e),
-            LaceLoadImageError::MemoryAllocationError(e) => {
-                write!(f, "memory allocation error: {}", e)
-            }
-            LaceLoadImageError::NxPolicyViolation => {
-                write!(f, "NX compatibility policy violation")
-            }
-            LaceLoadImageError::MemoryAttributeError(e) => {
-                write!(f, "failed to change memory attributes: {}", e)
-            }
-        }
-    }
 }
 
 /// Raw representation of the UEFI Loaded Image Protocol.

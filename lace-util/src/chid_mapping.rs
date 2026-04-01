@@ -8,8 +8,8 @@
 //! The entries are followed by a table of NUL-terminated strings, which are referenced by the
 //! entries by absolute offset.
 
-use crate::Guid;
-use core::{fmt::Display, mem::size_of};
+use crate::{Display, Guid};
+use core::mem::size_of;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 // (Private) definitions for the binary serialization format
@@ -58,14 +58,9 @@ pub enum ChidMapping<'s> {
 }
 
 /// Error indicating malformed CHID mappings data
-#[derive(Clone, Copy, Default, Debug)]
+#[derive(Clone, Copy, Default, Debug, Display)]
+#[display("malformed CHID mappings data")]
 pub struct MalformedChidMappings;
-
-impl Display for MalformedChidMappings {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "malformed CHID mappings data")
-    }
-}
 
 pub struct ChidMappingIterator<'s> {
     data: &'s [u8],

@@ -6,21 +6,15 @@
 use super::image::{LaceLoadImageError, LaceLoadedImage};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use core::{ffi::c_void, fmt::Display};
+use core::ffi::c_void;
+use lace_util::Display;
 
-#[derive(Debug)]
+#[derive(Debug, Display)]
 pub enum BootLinuxError {
+    #[display("failed to load kernel image: {}")]
     LoadKernelError(LaceLoadImageError),
+    #[display("failed to load initrd image: {}")]
     LoadInitrdError(uefi::Error),
-}
-
-impl Display for BootLinuxError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            BootLinuxError::LoadKernelError(e) => write!(f, "failed to load kernel image: {}", e),
-            BootLinuxError::LoadInitrdError(e) => write!(f, "failed to load initrd image: {}", e),
-        }
-    }
 }
 
 /// Boots a Linux kernel given in PE format, with optional initrd and command line.

@@ -19,11 +19,16 @@ pub mod smbios;
 pub mod units;
 
 use core::cmp::Ordering;
-use core::fmt::{self, Debug, Display, Write};
+use core::fmt::{self, Debug, Write};
 use zerocopy::byteorder::{ByteOrder, U16, U32};
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 pub use fdt;
+
+// Re-export `Display` from the derive and formatting modules so that users
+// of `lace-util` can use it without depending on the derive crate directly.
+pub use core::fmt::Display;
+pub use lace_util_derive::Display;
 
 pub fn find_byte_sequence(s: &[u8], sub: &[u8]) -> Option<usize> {
     if s.len() < sub.len() {
@@ -90,14 +95,9 @@ pub struct Guid {
     pub data4: [u8; 8],
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Display)]
+#[display("invalid GUID format")]
 pub struct GuidParseError;
-
-impl Display for GuidParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "invalid GUID format")
-    }
-}
 
 impl Guid {
     /// Parse a GUID string in the format "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
