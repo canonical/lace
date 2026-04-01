@@ -67,7 +67,8 @@ The project has a detailed style guide in `STYLE.md`. Key points:
 
 ### Licensing
 
-All Lace code uses dual licensing (update 2025 for the current year)
+All Lace code uses dual licensing (update 2025 for the current year,
+authors are optional)
 
 **Required header for all Rust source files:**
 ```rust
