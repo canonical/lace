@@ -20,6 +20,7 @@ pub mod units;
 
 use core::cmp::Ordering;
 use core::fmt::{self, Debug, Display, Write};
+use zerocopy::byteorder::{ByteOrder, U16, U32};
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 pub use fdt;
@@ -228,6 +229,60 @@ pub const fn guid_str(s: &str) -> Guid {
     match Guid::try_from_str(s) {
         Ok(guid) => guid,
         Err(_) => panic!("invalid GUID literal"),
+    }
+}
+
+/// GUID with explicit byte order for the multi-byte fields.
+///
+/// The first three fields of a GUID (`data1`, `data2`, `data3`) are
+/// multi-byte integers whose on-disk byte order depends on context:
+/// little-endian in GPT/UEFI, big-endian in RFC 9562 hashing.
+/// This wrapper makes the byte order explicit in the type system.
+#[repr(C)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, FromBytes, IntoBytes, Immutable, KnownLayout)]
+pub struct OrderedGuid<O: ByteOrder> {
+    data1: U32<O>,
+    data2: U16<O>,
+    data3: U16<O>,
+    data4: [u8; 8],
+}
+
+impl<O: ByteOrder> Default for OrderedGuid<O> {
+    fn default() -> Self {
+        Self {
+            data1: U32::ZERO,
+            data2: U16::ZERO,
+            data3: U16::ZERO,
+            data4: [0; 8],
+        }
+    }
+}
+
+impl<O: ByteOrder> From<Guid> for OrderedGuid<O> {
+    fn from(g: Guid) -> Self {
+        Self {
+            data1: U32::new(g.data1),
+            data2: U16::new(g.data2),
+            data3: U16::new(g.data3),
+            data4: g.data4,
+        }
+    }
+}
+
+impl<O: ByteOrder> From<OrderedGuid<O>> for Guid {
+    fn from(g: OrderedGuid<O>) -> Self {
+        Self {
+            data1: g.data1.get(),
+            data2: g.data2.get(),
+            data3: g.data3.get(),
+            data4: g.data4,
+        }
+    }
+}
+
+impl<O: ByteOrder> Debug for OrderedGuid<O> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Debug::fmt(&Guid::from(*self), f)
     }
 }
 
