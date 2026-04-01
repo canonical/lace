@@ -11,6 +11,7 @@
 //! [`proc_macro::TokenStream`] and [`proc_macro2::TokenStream`] and delegates
 //! to this crate.
 
+pub mod display;
 pub mod entry;
 pub mod named_enum;
 pub mod num_enum;
