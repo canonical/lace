@@ -7,9 +7,10 @@ license.workspace = true
 [dependencies]
 fdt.workspace = true
 lace-util-derive = { path = "../lace-util-derive" }
+libc = { workspace = true, optional = true }
 zerocopy = { workspace = true, features = ["derive"] }
 
 [features]
 default = ["std", "grub"]
-std = []
+std = ["dep:libc"]
 grub = []
