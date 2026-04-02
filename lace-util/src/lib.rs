@@ -16,6 +16,8 @@ pub mod grub;
 pub mod peimage;
 pub mod sha1;
 pub mod smbios;
+#[cfg(all(feature = "std", unix))]
+pub mod tempfile;
 pub mod units;
 
 use core::cmp::Ordering;

@@ -290,6 +290,7 @@ version = "0.1.0"
 dependencies = [
  "fdt",
  "lace-util-derive",
+ "libc",
  "zerocopy",
 ]
 
