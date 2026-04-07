@@ -24,17 +24,6 @@ fn try_derive(input: TokenStream) -> syn::Result<TokenStream> {
     let input: DeriveInput = syn::parse2(input)?;
     let name = &input.ident;
 
-    // Find the underlying integer type from #[repr(integer_type)]
-    let repr_type = input
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("repr"))
-        .map(|attr| attr.parse_args::<syn::Ident>())
-        .transpose()?
-        .ok_or_else(|| {
-            syn::Error::new_spanned(name, "NumEnum requires a #[repr(integer_type)] attribute")
-        })?;
-
     // Parse enum variants
     let variants = match &input.data {
         Data::Enum(data) => &data.variants,
@@ -45,6 +34,17 @@ fn try_derive(input: TokenStream) -> syn::Result<TokenStream> {
             ));
         }
     };
+
+    // Find the underlying integer type from #[repr(integer_type)]
+    let repr_type = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("repr"))
+        .map(|attr| attr.parse_args::<syn::Ident>())
+        .transpose()?
+        .ok_or_else(|| {
+            syn::Error::new_spanned(name, "NumEnum requires a #[repr(integer_type)] attribute")
+        })?;
 
     // Validate all variants are unit variants
     for variant in variants {
