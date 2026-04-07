@@ -41,14 +41,15 @@ use proc_macro::TokenStream;
 /// integer types.
 ///
 /// This macro generates implementations of `TryFrom<Int>` and `From<Enum>` for
-/// enums with a `#[repr(type)]` attribute, where variants are assigned
-/// sequential integer values starting from 0.
+/// enums with a `#[repr(integer_type)]` attribute, where each variant must
+/// carry an explicit integer discriminant.
 ///
 /// # Requirements
 ///
-/// - The enum must have a `#[repr(type)]` attribute specifying an integer type
-///   (e.g., `u8`, `i32`)
+/// - The enum must have a `#[repr(integer_type)]` attribute specifying an
+///   integer type (e.g., `u8`, `i32`)
 /// - All enum variants must be unit variants (no fields)
+/// - Every variant must have an explicit discriminant (e.g., `Red = 0`)
 ///
 /// # Generated Implementations
 ///
@@ -124,11 +125,13 @@ use proc_macro::TokenStream;
 /// assert_eq!(Color::try_from(-1i32), Err(()));   // Negative value
 /// ```
 ///
-/// # Panics
+/// # Compile-time errors
 ///
-/// This macro will panic at compile time if:
-/// - The enum doesn't have a `#[repr(type)]` attribute
+/// This macro will emit a compiler error (via `compile_error!`) if:
+/// - The input is not an enum
+/// - The enum is missing a `#[repr(integer_type)]` attribute
 /// - Any variant has fields (e.g., `Foo(u32)` or `Bar { x: i32 }`)
+/// - Any variant is missing an explicit discriminant
 #[proc_macro_derive(NumEnum)]
 pub fn derive_num_enum(input: TokenStream) -> TokenStream {
     impl_::num_enum::derive(input.into()).into()
@@ -216,9 +219,10 @@ pub fn derive_num_enum(input: TokenStream) -> TokenStream {
 /// assert_eq!(Animal::try_from_short_name("cat"), None); // case sensitive
 /// ```
 ///
-/// # Panics
+/// # Compile-time errors
 ///
-/// This macro will panic at compile time if:
+/// This macro will emit a compiler error (via `compile_error!`) if:
+/// - The input is not an enum
 /// - Any variant has fields (e.g., `Foo(u32)` or `Bar { x: i32 }`)
 /// - The `#[name]` attribute has invalid syntax
 #[proc_macro_derive(NamedEnum, attributes(name))]
@@ -238,9 +242,11 @@ pub fn derive_named_enum(input: TokenStream) -> TokenStream {
 ///     // Application code here
 /// }
 /// ```
-/// # Panics
-/// This macro will panic at compile time if any arguments are
-/// provided to the attribute.
+/// # Compile-time errors
+///
+/// This macro will emit a compiler error (via `compile_error!`) if:
+/// - Any arguments are provided to the attribute
+/// - The attribute is applied to input that does not parse as a function
 #[proc_macro_attribute]
 pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
     impl_::entry::apply(args.into(), input.into()).into()

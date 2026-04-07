@@ -7,38 +7,52 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Data, DeriveInput, Fields};
 
-/// Derives `TryFrom<Int>` (for all integer widths) and `From<Enum>` for an
+/// Derives `TryFrom<Int>` (for most integer widths) and `From<Enum>` for an
 /// enum annotated with `#[repr(integer_type)]`.
 ///
-/// All variants must be unit variants with explicit discriminants. Panics at
-/// compile time if the requirements are not met.
+/// All variants must be unit variants with explicit discriminants. Returns a
+/// `compile_error!` token stream (rather than panicking) when the requirements
+/// are not met.
 pub fn derive(input: TokenStream) -> TokenStream {
-    let input: DeriveInput = syn::parse2(input).expect("failed to parse derive input");
+    match try_derive(input) {
+        Ok(ts) => ts,
+        Err(e) => e.to_compile_error(),
+    }
+}
+
+fn try_derive(input: TokenStream) -> syn::Result<TokenStream> {
+    let input: DeriveInput = syn::parse2(input)?;
     let name = &input.ident;
 
-    // Find the underlying integer type from #[repr(type)]
+    // Find the underlying integer type from #[repr(integer_type)]
     let repr_type = input
         .attrs
         .iter()
         .find(|attr| attr.path().is_ident("repr"))
-        .map(|attr| {
-            attr.parse_args::<syn::Ident>().expect(
-                "Expected #[repr(integer_type)] attribute with a valid \
-                 integer type (e.g., u8, i32)",
-            )
-        })
-        .expect("Expected #[repr(type)] attribute on enum");
+        .map(|attr| attr.parse_args::<syn::Ident>())
+        .transpose()?
+        .ok_or_else(|| {
+            syn::Error::new_spanned(name, "NumEnum requires a #[repr(integer_type)] attribute")
+        })?;
 
     // Parse enum variants
     let variants = match &input.data {
         Data::Enum(data) => &data.variants,
-        _ => panic!("NumEnum can only be derived for enums"),
+        _ => {
+            return Err(syn::Error::new_spanned(
+                name,
+                "NumEnum can only be derived for enums",
+            ));
+        }
     };
 
     // Validate all variants are unit variants
     for variant in variants {
         if !matches!(variant.fields, Fields::Unit) {
-            panic!("NumEnum only supports unit variants");
+            return Err(syn::Error::new_spanned(
+                &variant.ident,
+                "NumEnum only supports unit variants",
+            ));
         }
     }
 
@@ -47,15 +61,21 @@ pub fn derive(input: TokenStream) -> TokenStream {
         .iter()
         .map(|variant| {
             let variant_name = &variant.ident;
-            let Some(discriminant) = variant.discriminant.as_ref().map(|(_, expr)| expr) else {
-                panic!(
-                    "Variant `{}` must have an explicit discriminant for NumEnum",
-                    variant_name
-                )
-            };
-            (variant_name, discriminant)
+            variant
+                .discriminant
+                .as_ref()
+                .map(|(_, expr)| (variant_name, expr))
+                .ok_or_else(|| {
+                    syn::Error::new_spanned(
+                        variant_name,
+                        format!(
+                            "variant `{variant_name}` must have an explicit \
+                             discriminant for NumEnum"
+                        ),
+                    )
+                })
         })
-        .collect();
+        .collect::<syn::Result<_>>()?;
 
     // Generate match arms for TryFrom<Int>, e.g. `0 => Ok(Color::Red),`
     let try_from_arms = variant_discriminants
@@ -123,11 +143,11 @@ pub fn derive(input: TokenStream) -> TokenStream {
     };
 
     // Combine implementations
-    quote! {
+    Ok(quote! {
         #try_from_repr_impl
         #(#other_try_from_impls)*
         #from_impl
-    }
+    })
 }
 
 #[cfg(test)]
@@ -194,37 +214,77 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "Expected #[repr(type)] attribute on enum")]
-    fn test_derive_num_enum_missing_repr_panics() {
+    fn test_derive_num_enum_missing_repr_emits_compile_error() {
         let input = quote! {
             enum Foo {
                 Bar = 0,
             }
         };
-        derive(input);
+        let output = derive(input).to_string();
+        assert!(
+            output.contains("compile_error"),
+            "expected compile_error for missing #[repr]"
+        );
+        assert!(
+            output.contains("NumEnum requires a #[repr(integer_type)] attribute"),
+            "expected full error message"
+        );
     }
 
     #[test]
-    #[should_panic(expected = "NumEnum only supports unit variants")]
-    fn test_derive_num_enum_non_unit_variant_panics() {
+    fn test_derive_num_enum_non_unit_variant_emits_compile_error() {
         let input = quote! {
             #[repr(u8)]
             enum Foo {
                 Bar(u32),
             }
         };
-        derive(input);
+        let output = derive(input).to_string();
+        assert!(
+            output.contains("compile_error"),
+            "expected compile_error for non-unit variant"
+        );
+        assert!(
+            output.contains("NumEnum only supports unit variants"),
+            "expected full error message"
+        );
     }
 
     #[test]
-    #[should_panic(expected = "must have an explicit discriminant for NumEnum")]
-    fn test_derive_num_enum_missing_discriminant_panics() {
+    fn test_derive_num_enum_missing_discriminant_emits_compile_error() {
         let input = quote! {
             #[repr(u8)]
             enum Foo {
                 Bar,
             }
         };
-        derive(input);
+        let output = derive(input).to_string();
+        assert!(
+            output.contains("compile_error"),
+            "expected compile_error for missing discriminant"
+        );
+        assert!(
+            output.contains("must have an explicit discriminant for NumEnum"),
+            "expected full error message"
+        );
+    }
+
+    #[test]
+    fn test_derive_num_enum_non_enum_emits_compile_error() {
+        let input = quote! {
+            #[repr(u8)]
+            struct Foo {
+                x: u32,
+            }
+        };
+        let output = derive(input).to_string();
+        assert!(
+            output.contains("compile_error"),
+            "expected compile_error for struct input"
+        );
+        assert!(
+            output.contains("NumEnum can only be derived for enums"),
+            "expected helpful error message"
+        );
     }
 }
