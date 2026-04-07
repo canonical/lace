@@ -154,10 +154,11 @@ fn parse_ebr_chain(
 }
 
 #[cfg(test)]
-mod test {
+pub(crate) mod test {
     use super::*;
     use crate::fs::base::FsError;
     use crate::fs::testutil::MemDisk;
+    use lace_util::count_blocks_aligned_up;
 
     fn write_mbr_signature(disk: &mut MemDisk, sector_byte_offset: usize) {
         disk.data[sector_byte_offset + 510] = 0x55;
@@ -183,6 +184,48 @@ mod test {
         let entry_bytes: &[u8] = zerocopy::IntoBytes::as_bytes(&entry);
         let offset = sector_byte_offset + 446 + slot * size_of::<MbrPartitionEntry>();
         disk.write_at(offset, entry_bytes);
+    }
+
+    /// Build a disk image with an MBR partition table containing the given
+    /// partition data blobs as primary partitions.
+    ///
+    /// Each entry is a raw byte slice to embed at its partition offset.
+    /// Supports up to 4 primary partitions. Returns a [`MemDisk`] with
+    /// 512-byte sectors.
+    pub(crate) fn build_mbr_disk_with_data(partitions: &[&[u8]]) -> MemDisk {
+        assert!(
+            partitions.len() <= 4,
+            "MBR supports at most 4 primary partitions"
+        );
+
+        let sector_size: u32 = 512;
+        let ss = sector_size as usize;
+
+        // Start first partition at LBA 2048 (standard 1 MiB alignment)
+        let mut next_lba: u32 = 2048;
+        let mut part_layouts: Vec<(u32, u32)> = Vec::new(); // (lba_start, lba_size)
+        for data in partitions {
+            assert!(!data.is_empty(), "partition data must not be empty");
+            let data_sectors =
+                count_blocks_aligned_up!(data.len() as u64, sector_size as u64) as u32;
+            part_layouts.push((next_lba, data_sectors));
+            next_lba += data_sectors;
+        }
+
+        let total_sectors = next_lba as u64 + 1;
+        let mut disk = MemDisk::new(sector_size, total_sectors);
+
+        write_mbr_signature(&mut disk, 0);
+        for (i, &(lba_start, lba_size)) in part_layouts.iter().enumerate() {
+            write_partition_entry(&mut disk, 0, i, 0x83, lba_start, lba_size);
+        }
+
+        // Write partition data
+        for (i, data) in partitions.iter().enumerate() {
+            disk.write_at(part_layouts[i].0 as usize * ss, data);
+        }
+
+        disk
     }
 
     #[test]
