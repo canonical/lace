@@ -10,18 +10,28 @@ use syn::ItemFn;
 /// Rewrites the annotated function with
 /// `#[unsafe(export_name = "lace_app_main")]`.
 ///
-/// # Panics
-///
-/// Panics if any arguments are passed to the attribute.
+/// Returns a `compile_error!` token stream (rather than panicking) when
+/// arguments are passed to the attribute or the input cannot be parsed as a
+/// function.
 pub fn apply(args: TokenStream, input: TokenStream) -> TokenStream {
-    if !args.is_empty() {
-        panic!("#[entry] does not accept any arguments");
+    match try_apply(args, input) {
+        Ok(ts) => ts,
+        Err(e) => e.to_compile_error(),
     }
-    let func: ItemFn = syn::parse2(input).expect("failed to parse function");
-    quote! {
+}
+
+fn try_apply(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream> {
+    if !args.is_empty() {
+        return Err(syn::Error::new_spanned(
+            args,
+            "#[entry] does not accept any arguments",
+        ));
+    }
+    let func: ItemFn = syn::parse2(input)?;
+    Ok(quote! {
         #[unsafe(export_name = "lace_app_main")]
         #func
-    }
+    })
 }
 
 #[cfg(test)]
@@ -57,10 +67,28 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "#[entry] does not accept any arguments")]
-    fn test_entry_apply_with_args_panics() {
+    fn test_entry_apply_with_args_emits_compile_error() {
         let args = quote! { some_arg };
         let input = quote! { fn main() {} };
-        apply(args, input);
+        let output = apply(args, input).to_string();
+        assert!(
+            output.contains("compile_error"),
+            "expected compile_error when arguments are provided"
+        );
+        assert!(
+            output.contains("#[entry] does not accept any arguments"),
+            "expected full error message"
+        );
+    }
+
+    #[test]
+    fn test_entry_apply_non_function_emits_compile_error() {
+        let args = TokenStream::new();
+        let input = quote! { struct Foo {} };
+        let output = apply(args, input).to_string();
+        assert!(
+            output.contains("compile_error"),
+            "expected compile_error when input is not a function"
+        );
     }
 }

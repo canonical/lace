@@ -13,22 +13,38 @@ use syn::{Data, DeriveInput, Fields};
 /// &'static str`, and `try_from_short_name(&str) -> Option<Self>`. Names are
 /// sourced from `#[name(short = "...", long = "...")]` attributes; the variant
 /// identifier is used as a fallback for either or both. All variants must be
-/// unit variants.
+/// unit variants. Returns a `compile_error!` token stream (rather than
+/// panicking) when requirements are not met.
 pub fn derive(input: TokenStream) -> TokenStream {
-    let input: DeriveInput = syn::parse2(input).expect("failed to parse derive input");
+    match try_derive(input) {
+        Ok(ts) => ts,
+        Err(e) => e.to_compile_error(),
+    }
+}
+
+fn try_derive(input: TokenStream) -> syn::Result<TokenStream> {
+    let input: DeriveInput = syn::parse2(input)?;
     let name = &input.ident;
 
     // Parse enum variants
     let variants = match &input.data {
         Data::Enum(data) => &data.variants,
-        _ => panic!("NamedEnum can only be derived for enums"),
+        _ => {
+            return Err(syn::Error::new_spanned(
+                name,
+                "NamedEnum can only be derived for enums",
+            ));
+        }
     };
 
     let mut variant_data = Vec::new();
 
     for variant in variants {
         if !matches!(variant.fields, Fields::Unit) {
-            panic!("NamedEnum only supports unit variants");
+            return Err(syn::Error::new_spanned(
+                &variant.ident,
+                "NamedEnum only supports unit variants",
+            ));
         }
 
         let variant_name = &variant.ident;
@@ -49,11 +65,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
                         long_name = Some(s.value());
                     }
                     Ok(())
-                })
-                .expect(
-                    "Failed to parse name attribute: expected format \
-                     #[name(short = \"...\", long = \"...\")]",
-                );
+                })?;
             }
         }
 
@@ -85,7 +97,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
     });
 
     // Generate a single impl block with all three methods
-    quote! {
+    Ok(quote! {
         impl #name {
             pub fn short_name(&self) -> &'static str {
                 match self {
@@ -106,7 +118,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
                 }
             }
         }
-    }
+    })
 }
 
 #[cfg(test)]
@@ -192,13 +204,54 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "NamedEnum only supports unit variants")]
-    fn test_derive_named_enum_non_unit_variant_panics() {
+    fn test_derive_named_enum_non_unit_variant_emits_compile_error() {
         let input = quote! {
             enum Foo {
                 Bar(u32),
             }
         };
-        derive(input);
+        let output = derive(input).to_string();
+        assert!(
+            output.contains("compile_error"),
+            "expected compile_error for non-unit variant"
+        );
+        assert!(
+            output.contains("NamedEnum only supports unit variants"),
+            "expected full error message"
+        );
+    }
+
+    #[test]
+    fn test_derive_named_enum_non_enum_emits_compile_error() {
+        let input = quote! {
+            struct Foo {
+                x: u32,
+            }
+        };
+        let output = derive(input).to_string();
+        assert!(
+            output.contains("compile_error"),
+            "expected compile_error for struct input"
+        );
+        assert!(
+            output.contains("NamedEnum can only be derived for enums"),
+            "expected helpful error message"
+        );
+    }
+
+    #[test]
+    fn test_derive_named_enum_malformed_name_attr_emits_compile_error() {
+        // #[name(short)] without = "..." is malformed and should not panic.
+        let input = quote! {
+            enum Foo {
+                #[name(short)]
+                Bar,
+            }
+        };
+        let output = derive(input).to_string();
+        assert!(
+            output.contains("compile_error"),
+            "expected compile_error for malformed #[name] attribute"
+        );
     }
 }
