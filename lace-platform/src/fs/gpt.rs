@@ -128,10 +128,56 @@ pub fn parse_gpt(
 }
 
 #[cfg(test)]
-mod test {
+pub(crate) mod test {
     use super::*;
     use crate::fs::base::FsError;
     use crate::fs::testutil::MemDisk;
+    use lace_util::count_blocks_aligned_up;
+
+    /// Build a disk image with a GPT partition table containing the given
+    /// partition data blobs.
+    ///
+    /// Computes partition layout from the data sizes, delegates header and
+    /// entry writing to [`build_gpt_disk`], then writes the data bytes.
+    /// Returns a [`MemDisk`] with 512-byte sectors.
+    pub(crate) fn build_gpt_disk_with_data(partitions: &[&[u8]]) -> MemDisk {
+        let sector_size: u32 = 512;
+        let ss = sector_size as usize;
+
+        let entry_sectors =
+            count_blocks_aligned_up!(partitions.len() * size_of::<GptPartitionEntry>(), ss);
+        let first_data_lba = (2 + entry_sectors) as u64;
+
+        // A non-zero type GUID so entries are recognised as used
+        let type_guid: Guid = Guid::read_from_bytes(&[
+            0xAF, 0x3D, 0xC6, 0x0F, 0x83, 0x84, 0x72, 0x47, 0x8E, 0x79, 0x3D, 0x69, 0xD8, 0x47,
+            0x7D, 0xE4,
+        ])
+        .unwrap();
+
+        let mut next_lba = first_data_lba;
+        let mut part_specs: Vec<(u64, u64, Guid)> = Vec::new();
+        for data in partitions {
+            assert!(!data.is_empty(), "partition data must not be empty");
+            let data_sectors = count_blocks_aligned_up!(data.len() as u64, sector_size as u64);
+            part_specs.push((next_lba, next_lba + data_sectors - 1, type_guid));
+            next_lba += data_sectors;
+        }
+
+        let mut disk = build_gpt_disk(sector_size, &part_specs);
+
+        // Ensure the disk is large enough to hold the partition data
+        let needed = next_lba as usize * ss;
+        if disk.data.len() < needed {
+            disk.data.resize(needed, 0);
+        }
+
+        for (i, data) in partitions.iter().enumerate() {
+            disk.write_at(part_specs[i].0 as usize * ss, data);
+        }
+
+        disk
+    }
 
     /// Build a minimal GPT disk image with the given partition entries.
     fn build_gpt_disk(
