@@ -7,9 +7,11 @@ use alloc::boxed::Box;
 use alloc::format;
 use alloc::rc::Rc;
 use alloc::string::{String, ToString};
+use alloc::vec;
 use alloc::vec::Vec;
 use core::cell::RefCell;
 use lace_platform::fs::{Filesystem, FsError};
+use lace_platform::mem::{self, PageAllocationIface};
 use lace_util::grub::{MenuEntry, parse_grub_cfg};
 
 use super::{BootConfiguration, BootFlow, SimpleBootConfiguration};
@@ -117,7 +119,8 @@ impl BootFlow for GrubBootFlow {
             if let Ok(mut file) = filesystem.borrow_mut().open_file(&path) {
                 log::debug!("Found GRUB config: {}", grub_path);
 
-                if let Ok(content_bytes) = file.read_to_end()
+                let mut content_bytes = vec![0u8; file.size() as usize];
+                if file.read_exact(&mut content_bytes).is_ok()
                     && let Ok(content) = core::str::from_utf8(&content_bytes)
                 {
                     let entries = parse_grub_cfg(content);
@@ -158,31 +161,64 @@ fn try_open_boot_file(
     Err(FsError::NotFound)
 }
 
-/// Load kernel and optionally initrd from the shared filesystem.
+/// Load a file into a freshly-allocated [`PageAllocation`] sized to its
+/// length. Returns both the allocation (owning the memory) and the
+/// valid byte length, since a file is usually not a whole number of
+/// pages.
+fn load_file_to_pages(
+    fs: &mut dyn Filesystem,
+    path: &str,
+) -> Result<(mem::PageAllocation, usize), SpeedbootError> {
+    let mut file = try_open_boot_file(fs, path).map_err(|_| SpeedbootError::FileNotFound)?;
+    let size = file.size() as usize;
+    let mut alloc = unsafe {
+        mem::PageAllocation::new_uninit(
+            mem::PageAllocationConstraint::AnyAddress,
+            None,
+            mem::page_count(size),
+            None,
+        )
+    }
+    .map_err(|_| SpeedbootError::FileReadError)?;
+    file.read_exact(&mut alloc.as_u8_slice_mut()[..size])
+        .map_err(|_| SpeedbootError::FileReadError)?;
+    Ok((alloc, size))
+}
+
+/// Loaded kernel and optional initrd, each owning a [`PageAllocation`].
+pub struct LoadedImages {
+    pub kernel: mem::PageAllocation,
+    pub kernel_len: usize,
+    pub initrd: Option<(mem::PageAllocation, usize)>,
+}
+
+impl LoadedImages {
+    pub fn kernel_bytes(&self) -> &[u8] {
+        &self.kernel.as_u8_slice()[..self.kernel_len]
+    }
+
+    pub fn initrd_bytes(&self) -> Option<&[u8]> {
+        self.initrd
+            .as_ref()
+            .map(|(alloc, len)| &alloc.as_u8_slice()[..*len])
+    }
+}
+
+/// Load kernel and optionally initrd from the shared filesystem into
+/// page-allocated backing storage.
 pub fn load_boot_files(
     filesystem: &Rc<RefCell<Box<dyn Filesystem>>>,
     kernel_path: &str,
     initrd_path: Option<&str>,
-) -> Result<(Vec<u8>, Option<Vec<u8>>), SpeedbootError> {
+) -> Result<LoadedImages, SpeedbootError> {
     let mut fs = filesystem.borrow_mut();
-
-    let mut kernel_file =
-        try_open_boot_file(&mut **fs, kernel_path).map_err(|_| SpeedbootError::FileNotFound)?;
-
-    let kernel_data = kernel_file
-        .read_to_end()
-        .map_err(|_| SpeedbootError::FileReadError)?;
-
-    let initrd_data = if let Some(initrd_path) = initrd_path {
-        Some(
-            try_open_boot_file(&mut **fs, initrd_path)
-                .map_err(|_| SpeedbootError::FileNotFound)?
-                .read_to_end()
-                .map_err(|_| SpeedbootError::FileReadError)?,
-        )
-    } else {
-        None
-    };
-
-    Ok((kernel_data, initrd_data))
+    let (kernel, kernel_len) = load_file_to_pages(&mut **fs, kernel_path)?;
+    let initrd = initrd_path
+        .map(|p| load_file_to_pages(&mut **fs, p))
+        .transpose()?;
+    Ok(LoadedImages {
+        kernel,
+        kernel_len,
+        initrd,
+    })
 }

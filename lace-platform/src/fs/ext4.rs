@@ -5,7 +5,6 @@ extern crate alloc;
 
 use super::base::{DirEntry, File, Filesystem, FsError};
 use alloc::boxed::Box;
-use alloc::vec;
 use alloc::vec::Vec;
 
 /// ext4 filesystem implementation using ext4-view.
@@ -130,28 +129,6 @@ impl File for Ext4File {
         self.file.read_bytes(buf).map_err(|_| FsError::Invalid)
     }
 
-    fn read_to_end(&mut self) -> Result<Vec<u8>, FsError> {
-        log::debug!("[FS] ext4: read_to_end called");
-        let metadata = self.file.metadata();
-        let size = metadata.len() as usize;
-        let mut buf = vec![0u8; size];
-
-        let mut total_read = 0;
-        while total_read < size {
-            let n = self
-                .file
-                .read_bytes(&mut buf[total_read..])
-                .map_err(|_| FsError::Invalid)?;
-            if n == 0 {
-                break;
-            }
-            total_read += n;
-        }
-
-        buf.truncate(total_read);
-        log::debug!("[FS] ext4: read_to_end read {} bytes", total_read);
-        Ok(buf)
-    }
 
     fn size(&mut self) -> u64 {
         self.file.metadata().len()
@@ -250,7 +227,8 @@ pub(crate) mod test {
         let mut fs = make_filesystem(&image);
 
         let mut file = fs.open_file("/hello.txt").unwrap();
-        let data = file.read_to_end().unwrap();
+        let mut data = vec![0u8; file.size() as usize];
+        file.read_exact(&mut data).unwrap();
         assert_eq!(data, content.as_bytes());
     }
 
@@ -387,7 +365,7 @@ pub(crate) mod test {
         assert!(matches!(result, Err(FsError::NotFound)));
     }
 
-    // --- File trait: read, read_to_end, size ---
+    // --- File trait: read, read_exact, size ---
 
     #[test]
     fn test_file_read_partial() {
@@ -401,24 +379,25 @@ pub(crate) mod test {
     }
 
     #[test]
-    fn test_file_read_to_end() {
+    fn test_file_read_exact() {
         let content = "The quick brown fox jumps over the lazy dog";
         let image = make_ext4_image(&[("/fox.txt", content.as_bytes())]);
         let mut fs = make_filesystem(&image);
 
         let mut file = fs.open_file("/fox.txt").unwrap();
-        let data = file.read_to_end().unwrap();
+        let mut data = vec![0u8; file.size() as usize];
+        file.read_exact(&mut data).unwrap();
         assert_eq!(data, content.as_bytes());
     }
 
     #[test]
-    fn test_file_read_to_end_empty() {
+    fn test_file_read_exact_empty() {
         let image = make_ext4_image(&[("/empty.txt", "".as_bytes())]);
         let mut fs = make_filesystem(&image);
 
         let mut file = fs.open_file("/empty.txt").unwrap();
-        let data = file.read_to_end().unwrap();
-        assert!(data.is_empty());
+        assert_eq!(file.size(), 0);
+        file.read_exact(&mut []).unwrap();
     }
 
     #[test]

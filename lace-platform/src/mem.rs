@@ -2,7 +2,7 @@
 // Copyright (C) 2025, Canonical Ltd.
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 
-use core::{mem::MaybeUninit, ptr::NonNull};
+use core::ptr::NonNull;
 
 /// Constraints for page allocations.
 /// Platforms need to provide support for at least `AnyAddress`.
@@ -56,11 +56,9 @@ pub trait PageAllocationIface<Address>: Sized {
         unsafe {
             // SAFETY: We immediately initialize the memory after allocation, before safe code can access it.
             let allocation = Self::new_uninit(constraint, memory_type, pages, alignment)?;
-            let s: &mut [MaybeUninit<u8>] = core::slice::from_raw_parts_mut(
-                allocation.as_ptr().cast(),
-                pages * Self::PAGE_SIZE,
-            );
-            s.fill(MaybeUninit::new(0));
+            // Use write_bytes so this lowers to a real memset; a
+            // slice::fill over MaybeUninit<u8> does not always.
+            core::ptr::write_bytes(allocation.as_ptr(), 0, pages * Self::PAGE_SIZE);
             Ok(allocation)
         }
     }
@@ -74,17 +72,14 @@ pub trait PageAllocationIface<Address>: Sized {
         alignment: Option<usize>,
         init: &[u8],
     ) -> Result<Self, Self::Error> {
-        assert!(pages * Self::PAGE_SIZE >= init.len());
+        let total = pages * Self::PAGE_SIZE;
+        assert!(total >= init.len());
         unsafe {
             // SAFETY: We immediately initialize the memory after allocation, before safe code can access it.
             let allocation = Self::new_uninit(constraint, memory_type, pages, alignment)?;
-            let s: &mut [MaybeUninit<u8>] = core::slice::from_raw_parts_mut(
-                allocation.as_ptr().cast(),
-                pages * Self::PAGE_SIZE,
-            );
-            let (dinit, dzero) = s.split_at_mut(init.len());
-            core::ptr::copy_nonoverlapping(init.as_ptr(), dinit.as_mut_ptr().cast(), init.len());
-            dzero.fill(MaybeUninit::new(0));
+            let dst = allocation.as_ptr();
+            core::ptr::copy_nonoverlapping(init.as_ptr(), dst, init.len());
+            core::ptr::write_bytes(dst.add(init.len()), 0, total - init.len());
             Ok(allocation)
         }
     }

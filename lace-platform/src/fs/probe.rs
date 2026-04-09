@@ -231,6 +231,15 @@ mod test {
     use crate::fs::mbr::test::build_mbr_disk_with_data;
     use lace_util::count_blocks_aligned_up;
 
+    /// Test helper: open a file and read it fully into a Vec via the
+    /// trait's `read_exact`. Replaces the retired `read_to_end` method.
+    fn read_file(fs: &mut dyn Filesystem, path: &str) -> Vec<u8> {
+        let mut file = fs.open_file(path).unwrap();
+        let mut buf = vec![0u8; file.size() as usize];
+        file.read_exact(&mut buf).unwrap();
+        buf
+    }
+
     // -- try_mount_filesystem --
 
     #[test]
@@ -267,11 +276,7 @@ mod test {
         let mut filesystems = probe_disk(Box::new(disk));
         assert_eq!(filesystems.len(), 1, "expected one mounted filesystem");
 
-        let data = filesystems[0]
-            .open_file("/test.txt")
-            .unwrap()
-            .read_to_end()
-            .unwrap();
+        let data = read_file(filesystems[0].as_mut(), "/test.txt");
         assert_eq!(data, "gpt works".as_bytes());
     }
 
@@ -284,18 +289,10 @@ mod test {
         let mut filesystems = probe_disk(Box::new(disk));
         assert_eq!(filesystems.len(), 2, "expected two mounted filesystems");
 
-        let data_a = filesystems[0]
-            .open_file("/a.txt")
-            .unwrap()
-            .read_to_end()
-            .unwrap();
+        let data_a = read_file(filesystems[0].as_mut(), "/a.txt");
         assert_eq!(data_a, "partition-a".as_bytes());
 
-        let data_b = filesystems[1]
-            .open_file("/b.txt")
-            .unwrap()
-            .read_to_end()
-            .unwrap();
+        let data_b = read_file(filesystems[1].as_mut(), "/b.txt");
         assert_eq!(data_b, "partition-b".as_bytes());
     }
 
@@ -312,11 +309,7 @@ mod test {
             "only the valid ext4 partition should mount"
         );
 
-        let data = filesystems[0]
-            .open_file("/good.txt")
-            .unwrap()
-            .read_to_end()
-            .unwrap();
+        let data = read_file(filesystems[0].as_mut(), "/good.txt");
         assert_eq!(data, "ok".as_bytes());
     }
 
@@ -330,11 +323,7 @@ mod test {
         let mut filesystems = probe_disk(Box::new(disk));
         assert_eq!(filesystems.len(), 1, "expected one mounted filesystem");
 
-        let data = filesystems[0]
-            .open_file("/mbr.txt")
-            .unwrap()
-            .read_to_end()
-            .unwrap();
+        let data = read_file(filesystems[0].as_mut(), "/mbr.txt");
         assert_eq!(data, "mbr works".as_bytes());
     }
 
@@ -347,18 +336,10 @@ mod test {
         let mut filesystems = probe_disk(Box::new(disk));
         assert_eq!(filesystems.len(), 2, "expected two mounted filesystems");
 
-        let data_a = filesystems[0]
-            .open_file("/first.txt")
-            .unwrap()
-            .read_to_end()
-            .unwrap();
+        let data_a = read_file(filesystems[0].as_mut(), "/first.txt");
         assert_eq!(data_a, "one".as_bytes());
 
-        let data_b = filesystems[1]
-            .open_file("/second.txt")
-            .unwrap()
-            .read_to_end()
-            .unwrap();
+        let data_b = read_file(filesystems[1].as_mut(), "/second.txt");
         assert_eq!(data_b, "two".as_bytes());
     }
 
@@ -375,11 +356,7 @@ mod test {
         let mut filesystems = probe_disk(Box::new(disk));
         assert_eq!(filesystems.len(), 1, "should fall back to whole-disk mount");
 
-        let data = filesystems[0]
-            .open_file("/bare.txt")
-            .unwrap()
-            .read_to_end()
-            .unwrap();
+        let data = read_file(filesystems[0].as_mut(), "/bare.txt");
         assert_eq!(data, "bare disk".as_bytes());
     }
 
@@ -420,18 +397,10 @@ mod test {
         let mut results = process(discovered);
         assert_eq!(results.len(), 2, "one from disk probe, one from partition");
 
-        let from_disk = results[0]
-            .open_file("/from_disk.txt")
-            .unwrap()
-            .read_to_end()
-            .unwrap();
+        let from_disk = read_file(results[0].as_mut(), "/from_disk.txt");
         assert_eq!(from_disk, "disk".as_bytes());
 
-        let from_part = results[1]
-            .open_file("/from_part.txt")
-            .unwrap()
-            .read_to_end()
-            .unwrap();
+        let from_part = read_file(results[1].as_mut(), "/from_part.txt");
         assert_eq!(from_part, "part".as_bytes());
     }
 
@@ -461,11 +430,7 @@ mod test {
         let mut results = process(discovered);
         assert_eq!(results.len(), 1);
 
-        let data = results[0]
-            .open_file("/premounted.txt")
-            .unwrap()
-            .read_to_end()
-            .unwrap();
+        let data = read_file(results[0].as_mut(), "/premounted.txt");
         assert_eq!(data, "pre".as_bytes());
     }
 }

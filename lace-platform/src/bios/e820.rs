@@ -3,7 +3,7 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 
 use super::int::{BiosRegisters, bios_call};
-pub use crate::e820::{E820Entry, E820MemoryType};
+use crate::e820::E820Entry;
 
 /// Get the system memory map using BIOS INT 15h E820h function.
 /// The caller must provide a buffer in low memory (<1MB) to store the entries.
@@ -19,13 +19,9 @@ pub fn get_memory_map(entries: &mut [E820Entry]) -> usize {
 
     for entry in entries.iter_mut() {
         let mut regs = BiosRegisters::new();
-        // EAX = 0xE820
         regs.eax = 0xE820;
-        // EBX = Continuation
         regs.ebx = continuation;
-        // ECX = Buffer size (20 bytes minimum, we use 24 for full struct including acpi)
-        regs.ecx = 24;
-        // EDX = 'SMAP'
+        regs.ecx = size_of::<E820Entry>() as u32;
         regs.edx = smap_sig;
 
         // ES:DI = Pointer to entry

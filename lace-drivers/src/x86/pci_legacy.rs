@@ -19,6 +19,17 @@ fn config_addr(bus: u8, dev: u8, func: u8, offset: u8) -> u32 {
         | ((offset as u32) & 0xFC)
 }
 
+/// Read a 16-bit value from PCI config space.
+///
+/// # Safety
+/// The caller must ensure the BDF and offset are valid.
+pub unsafe fn read_u16(bus: u8, dev: u8, func: u8, offset: u8) -> u16 {
+    unsafe {
+        port_io::outl(CONFIG_ADDRESS, config_addr(bus, dev, func, offset));
+        port_io::inw(CONFIG_DATA + (offset & 2) as u16)
+    }
+}
+
 /// Read a 32-bit value from PCI config space.
 ///
 /// # Safety
@@ -38,5 +49,16 @@ pub unsafe fn write_u32(bus: u8, dev: u8, func: u8, offset: u8, value: u32) {
     unsafe {
         port_io::outl(CONFIG_ADDRESS, config_addr(bus, dev, func, offset));
         port_io::outl(CONFIG_DATA, value);
+    }
+}
+
+/// Write an 8-bit value to PCI config space.
+///
+/// # Safety
+/// The caller must ensure the BDF and offset are valid.
+pub unsafe fn write_u8(bus: u8, dev: u8, func: u8, offset: u8, value: u8) {
+    unsafe {
+        port_io::outl(CONFIG_ADDRESS, config_addr(bus, dev, func, offset));
+        port_io::outb(CONFIG_DATA + (offset & 3) as u16, value);
     }
 }

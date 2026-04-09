@@ -2,7 +2,9 @@
 [workspace]
 resolver = "2"
 members = [
+    "lace-drivers",
     "lace-platform",
+    "lace-platform/src/virt/bootblock",
     "lace-speedboot",
     "lace-stubble",
     "lace-util",
@@ -11,6 +13,7 @@ members = [
     "tools/collect-hwids",
     "tools/fakeedid",
     "tools/pewrap",
+    "tools/flashedit",
     "tools/xtask",
 ]
 

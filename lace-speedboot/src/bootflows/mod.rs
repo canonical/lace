@@ -71,24 +71,25 @@ impl BootConfiguration for SimpleBootConfiguration {
             log::debug!("Cmdline: {}", cmdline);
         }
 
-        // Load kernel and initrd from filesystem
-        let (kernel_data, initrd_data) = grub::load_boot_files(
+        // Load kernel and initrd from filesystem into page-allocated
+        // buffers. If boot_linux returns, the allocations drop here and
+        // the memory returns to the page allocator.
+        let images = grub::load_boot_files(
             &self.filesystem,
             self.linux.as_deref().ok_or(SpeedbootError::NoKernelPath)?,
             self.initrd.as_deref(),
         )?;
 
-        // Boot Linux
         log::debug!("Starting kernel");
 
         match lace_stubble::boot_stubble_image(
-            lace_stubble::StubbleImage::Raw(&kernel_data),
-            initrd_data.as_deref(),
+            lace_stubble::StubbleImage::Raw(images.kernel_bytes()),
+            images.initrd_bytes(),
             self.cmdline.as_deref(),
         ) {
             Err(lace_stubble::BootStubbleError::NotAStubbleImage) => boot_linux(
-                &kernel_data,
-                initrd_data.as_deref(),
+                images.kernel_bytes(),
+                images.initrd_bytes(),
                 self.cmdline.as_deref(),
             )
             .map_err(|e| SpeedbootError::BootError(alloc::format!("{}", e))),
