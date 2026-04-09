@@ -115,6 +115,9 @@ exceptions = [
     { allow = ["GPL-2.0-only"], crate = "lace-util" },
     { allow = ["GPL-2.0-only"], crate = "lace-util-derive" },
     { allow = ["GPL-2.0-only"], crate = "lace-util-derive-impl" },
+    { allow = ["GPL-2.0-only"], crate = "lace-drivers" },
+    { allow = ["GPL-2.0-only"], crate = "flashedit" },
+    { allow = ["GPL-2.0-only"], crate = "virt-bootblock" },
 ]
 
 # Some crates don't have (easily) machine readable licensing information,
