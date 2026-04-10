@@ -79,9 +79,13 @@ override_dh_auto_configure:
 	sed /rustflags/d -i $(CARGO_HOME).metal/config.toml
 	# Configure cargo to build the core and alloc libraries itself as bare metal targets don't have
 	# pre-built libraries
-	echo '[unstable]' >>  $(CARGO_HOME).metal/config.toml
-	echo 'build-std = ["core", "alloc"]' >>  $(CARGO_HOME).metal/config.toml
-	echo 'build-std-features = ["compiler-builtins-mem"]' >>  $(CARGO_HOME).metal/config.toml
+	if grep -q '^\[unstable\]' $(CARGO_HOME).metal/config.toml; then \
+		sed -i '/^\[unstable\]/a build-std = ["core", "alloc"]\nbuild-std-features = ["compiler-builtins-mem"]' $(CARGO_HOME).metal/config.toml; \
+	else \
+		echo '[unstable]' >> $(CARGO_HOME).metal/config.toml; \
+		echo 'build-std = ["core", "alloc"]' >> $(CARGO_HOME).metal/config.toml; \
+		echo 'build-std-features = ["compiler-builtins-mem"]' >> $(CARGO_HOME).metal/config.toml; \
+	fi
 	/usr/share/cargo/bin/dh-cargo-vendored-sources
 
 override_dh_auto_test:
