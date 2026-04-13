@@ -17,8 +17,6 @@ pub mod linux;
 pub mod mem;
 pub mod tpm2;
 
-pub use console::{print_impl, println_impl};
-
 #[derive(Debug, Display)]
 pub enum Error {
     #[display("Disk error: {:?}")]
@@ -35,8 +33,6 @@ impl From<fs::DiskError> for Error {
 
 #[panic_handler]
 fn panic_handler(info: &core::panic::PanicInfo) -> ! {
-    // Force unlock console in case we panic while locked.
-    unsafe { console::OUTPUT.force_unlock() };
     println!("PANIC: {}", info);
     loop {
         unsafe {
