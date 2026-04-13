@@ -221,7 +221,7 @@ fn probe_disk(drive: u8) -> Option<Box<dyn BlockDevice>> {
         return None;
     }
     let params = int13h_get_parameters(drive).ok()?;
-    crate::debugln!("[BIOS] Discovered disk {:02X}", drive);
+    log::debug!("[BIOS] Discovered disk {:02X}", drive);
     Some(Box::new(BiosBlockDevice {
         drive,
         sector_size: params.bytes_per_sector as u32,
@@ -249,7 +249,7 @@ pub fn discover_boot_storage() -> DiscoveredStorage {
     // identity-mapped in the page tables, and valid for the lifetime of the
     // bootloader.
     let boot_drive: u8 = unsafe { *(0x7B00 as *const u8) };
-    crate::debugln!("[BIOS] Boot drive: {:02X}", boot_drive);
+    log::debug!("[BIOS] Boot drive: {:02X}", boot_drive);
 
     let mut result = DiscoveredStorage::new();
     result.disks = probe_disk(boot_drive).into_iter().collect();

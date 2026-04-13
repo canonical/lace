@@ -4,7 +4,6 @@
 
 //! BIOS platform abstractions.
 
-use crate::println;
 use core::arch::global_asm;
 use lace_util::Display;
 
@@ -33,7 +32,8 @@ impl From<fs::DiskError> for Error {
 
 #[panic_handler]
 fn panic_handler(info: &core::panic::PanicInfo) -> ! {
-    println!("PANIC: {}", info);
+    use core::fmt::Write as _;
+    let _ = writeln!(crate::console::stdout(), "PANIC: {}", info);
     loop {
         unsafe {
             core::arch::asm!("hlt");
@@ -44,14 +44,14 @@ fn panic_handler(info: &core::panic::PanicInfo) -> ! {
 #[unsafe(no_mangle)]
 pub extern "C" fn lace_platform_bios_entry() -> ! {
     mem::init();
+    crate::console::init();
 
     unsafe extern "Rust" {
         fn lace_app_main() -> Result<(), Error>;
     }
 
-    match unsafe { lace_app_main() } {
-        Ok(_) => (),
-        Err(e) => println!("Error: {}", e),
+    if let Err(e) = unsafe { lace_app_main() } {
+        log::error!("{}", e);
     }
 
     // Just hang if we fail to boot

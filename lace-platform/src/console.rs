@@ -18,12 +18,52 @@
 //! a locked state.
 
 use crate::p::console::{InputImpl, OutputImpl};
+use log::{LevelFilter, Log, Metadata, Record};
 use spin::Mutex;
 
 static STDOUT: Mutex<OutputImpl> = Mutex::new(OutputImpl::new());
 static STDIN: Mutex<InputImpl> = Mutex::new(InputImpl::new());
 
+/// Initialize the console subsystem.
+pub fn init() {
+    let _ = log::set_logger(&LOGGER);
+    log::set_max_level(if cfg!(debug_assertions) {
+        LevelFilter::Debug
+    } else {
+        LevelFilter::Info
+    });
+}
+
+/// `log::Log` implementation that writes formatted log records to stdout.
+struct ConsoleLogger;
+
+static LOGGER: ConsoleLogger = ConsoleLogger;
+
+impl Log for ConsoleLogger {
+    fn enabled(&self, _: &Metadata) -> bool {
+        true
+    }
+
+    fn log(&self, record: &Record) {
+        use core::fmt::Write as _;
+        let _ = writeln!(
+            stdout(),
+            "[{} {}] {}",
+            record.level(),
+            record.target(),
+            record.args()
+        );
+    }
+
+    fn flush(&self) {}
+}
+
 /// Handle to the platform stdout.
+///
+/// Direct access to stdout is intended for interactive UI (menu
+/// rendering, cursor positioning, ...). General program output should
+/// go through the `log` crate, which the console logger routes back
+/// through here.
 pub fn stdout() -> LockedConsole {
     LockedConsole
 }

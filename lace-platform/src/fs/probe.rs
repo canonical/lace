@@ -163,7 +163,7 @@ fn probe_disk(dev: Box<dyn BlockDevice>) -> Vec<Box<dyn Filesystem>> {
     let mut results = Vec::new();
 
     if let Some((scheme, partitions)) = found {
-        crate::debugln!("[fs] Found {} with {} partitions", scheme, partitions.len());
+        log::debug!("[fs] Found {} with {} partitions", scheme, partitions.len());
         for part in &partitions {
             let part_dev = Box::new(PartitionBlockDevice {
                 inner: Rc::clone(&shared),
@@ -205,7 +205,7 @@ fn process(discovered: DiscoveredStorage) -> Vec<Box<dyn Filesystem>> {
         }
     }
 
-    crate::debugln!("[fs] Probed {} filesystems total", results.len());
+    log::debug!("[fs] Probed {} filesystems total", results.len());
     results
 }
 

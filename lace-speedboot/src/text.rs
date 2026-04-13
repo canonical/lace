@@ -5,49 +5,49 @@
 
 use alloc::boxed::Box;
 use alloc::string::String;
-use lace_platform::{print, println};
+use core::fmt::Write;
+use lace_platform::console::{Input, stdin, stdout};
 
 use crate::SpeedbootError;
 use crate::bootflows::BootConfiguration;
 
 /// Display the boot menu to the user.
 pub fn display_menu(entries: &[Box<dyn BootConfiguration>]) {
-    println!("Boot Menu:");
-    println!("-----------");
-
+    let mut stdout = stdout();
+    let _ = writeln!(stdout, "Boot Menu:");
+    let _ = writeln!(stdout, "-----------");
     for (idx, entry) in entries.iter().enumerate() {
-        println!("  [{}] {}", idx, entry.title());
+        let _ = writeln!(stdout, "  [{}] {}", idx, entry.title());
     }
-
-    println!("");
+    let _ = writeln!(stdout);
 }
 
 /// Get user selection from the menu.
 pub fn get_user_selection(max: usize) -> Result<usize, SpeedbootError> {
-    print!("Select boot entry (0-{}): ", max - 1);
+    let mut stdout = stdout();
+    let _ = write!(stdout, "Select boot entry (0-{}): ", max - 1);
 
     let mut selection_str = String::new();
 
     // Read input character by character
     loop {
-        let input_event = lace_platform::console::Input::wait_input(
-            &mut lace_platform::console::stdin(),
-        )
-        .map_err(|_| SpeedbootError::InvalidSelection)?;
+        let input_event = stdin()
+            .wait_input()
+            .map_err(|_| SpeedbootError::InvalidSelection)?;
         let c = input_event.char;
 
         if c == '\r' || c == '\n' {
-            println!();
+            let _ = writeln!(stdout);
             break;
         } else if c == '\x08' {
             // Backspace
             if !selection_str.is_empty() {
                 selection_str.pop();
-                print!("\x08 \x08");
+                let _ = write!(stdout, "\x08 \x08");
             }
         } else if c.is_ascii_digit() {
             selection_str.push(c);
-            print!("{}", c);
+            let _ = write!(stdout, "{}", c);
         }
     }
 

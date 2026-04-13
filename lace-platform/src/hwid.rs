@@ -24,17 +24,17 @@ pub fn platform_compatible_using_hwids(hwids: &[u8]) -> Option<&str> {
         lace_util::chid_mapping::ChidMappingIterator::from(hwids)
             .collect::<Result<_, _>>()
             .ok()?;
-    debugln!("Parsed {} CHID mappings", mappings.len());
+    log::debug!("Parsed {} CHID mappings", mappings.len());
 
     // Get CHID sources
     let sources = chid_sources()?;
     for (idx, src) in sources.iter().enumerate() {
-        debugln!("CHID Source {}: {:?}", idx, src);
+        log::debug!("CHID Source {}: {:?}", idx, src);
     }
 
     // Compute CHIDs
     for (idx, chid_type) in lace_util::chid::CHID_TYPES.iter().enumerate() {
-        debugln!(
+        log::debug!(
             "CHID type {}: {:?}",
             idx,
             lace_util::chid::compute_chid(&sources, *chid_type)

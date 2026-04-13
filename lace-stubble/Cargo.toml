@@ -7,6 +7,7 @@ license.workspace = true
 [dependencies]
 lace-util = { path = "../lace-util", default-features = false }
 lace-platform = { path = "../lace-platform", default-features = false }
+log.workspace = true
 uefi = { workspace = true, optional = true }
 
 [features]

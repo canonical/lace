@@ -10,7 +10,6 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::cell::RefCell;
 use lace_platform::fs::{Filesystem, FsError};
-use lace_platform::println;
 use lace_util::grub::{MenuEntry, parse_grub_cfg};
 
 use super::{BootConfiguration, BootFlow, SimpleBootConfiguration};
@@ -116,13 +115,13 @@ impl BootFlow for GrubBootFlow {
         for grub_path in GRUB_PATHS {
             let path = ensure_leading_slash(grub_path);
             if let Ok(mut file) = filesystem.borrow_mut().open_file(&path) {
-                println!("  Found: {}", grub_path);
+                log::debug!("Found GRUB config: {}", grub_path);
 
                 if let Ok(content_bytes) = file.read_to_end()
                     && let Ok(content) = core::str::from_utf8(&content_bytes)
                 {
                     let entries = parse_grub_cfg(content);
-                    println!("    Parsed {} menu entries", entries.len());
+                    log::debug!("Parsed {} menu entries", entries.len());
                     all_configs.append(
                         &mut self.build_boot_configurations(&entries, Rc::clone(&filesystem)),
                     );

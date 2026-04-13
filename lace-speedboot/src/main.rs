@@ -15,11 +15,13 @@ mod text;
 extern crate alloc;
 
 use alloc::string::String;
+use core::fmt::Write;
 
 #[lace_platform::entry]
 fn main() -> Result<(), lace_platform::Error> {
-    lace_platform::println!("Lace Speedboot - Fast Boot Menu");
-    lace_platform::println!("================================\n");
+    let mut stdout = lace_platform::console::stdout();
+    let _ = writeln!(stdout, "Lace Speedboot - Fast Boot Menu");
+    let _ = writeln!(stdout, "================================\n");
 
     // Discover boot configurations from all boot flows
     let mut boot_configs =

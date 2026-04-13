@@ -9,7 +9,7 @@ use alloc::rc::Rc;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 use core::cell::RefCell;
-use lace_platform::{fs::Filesystem, println};
+use lace_platform::fs::Filesystem;
 use lace_util::bls::parse_bls_entry;
 
 use super::{BootConfiguration, BootFlow, SimpleBootConfiguration};
@@ -57,7 +57,7 @@ impl BootFlow for BlsBootFlow {
                 Err(_) => continue, // Directory doesn't exist, try next
             };
 
-            println!("  Found BLS directory: {}", bls_dir);
+            log::debug!("Found BLS directory: {}", bls_dir);
 
             // Process each .conf file in the directory
             for entry in entries {
@@ -75,11 +75,7 @@ impl BootFlow for BlsBootFlow {
                         {
                             let bls_entry = parse_bls_entry(content);
 
-                            println!(
-                                "    Found BLS entry: {} ({})",
-                                bls_entry.title(),
-                                entry.name
-                            );
+                            log::debug!("Found BLS entry: {} ({})", bls_entry.title(), entry.name);
 
                             // Create boot configuration
                             all_configs.push(Box::new(SimpleBootConfiguration::new(

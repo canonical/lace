@@ -14,7 +14,6 @@ use alloc::vec::Vec;
 use core::cell::RefCell;
 use lace_platform::fs::Filesystem;
 use lace_platform::linux::boot_linux;
-use lace_platform::println;
 
 /// Trait for boot configurations.
 pub trait BootConfiguration {
@@ -61,16 +60,15 @@ impl BootConfiguration for SimpleBootConfiguration {
     }
 
     fn start(self: Box<Self>) -> Result<(), SpeedbootError> {
-        println!("\nBooting: {}", self.title);
-
+        log::info!("Booting: {}", self.title);
         if let Some(ref linux_path) = self.linux {
-            println!("  Kernel: {}", linux_path);
+            log::debug!("Kernel: {}", linux_path);
         }
         if let Some(ref initrd) = self.initrd {
-            println!("  Initrd: {}", initrd);
+            log::debug!("Initrd: {}", initrd);
         }
         if let Some(ref cmdline) = self.cmdline {
-            println!("  Cmdline: {}", cmdline);
+            log::debug!("Cmdline: {}", cmdline);
         }
 
         // Load kernel and initrd from filesystem
@@ -81,7 +79,7 @@ impl BootConfiguration for SimpleBootConfiguration {
         )?;
 
         // Boot Linux
-        println!("  Starting kernel...");
+        log::debug!("Starting kernel");
 
         match lace_stubble::boot_stubble_image(
             lace_stubble::StubbleImage::Raw(&kernel_data),
@@ -117,8 +115,8 @@ pub fn discover_all() -> Result<Vec<Box<dyn BootConfiguration>>, SpeedbootError>
 
     let mut all_configs = Vec::new();
 
-    println!(
-        "Scanning {} filesystems for boot configurations...",
+    log::debug!(
+        "Scanning {} filesystems for boot configurations",
         filesystems.len()
     );
 
@@ -142,7 +140,7 @@ pub fn discover_all() -> Result<Vec<Box<dyn BootConfiguration>>, SpeedbootError>
         return Err(SpeedbootError::NoBootEntriesFound);
     }
 
-    println!("Found {} boot configurations total\n", all_configs.len());
+    log::debug!("Found {} boot configurations total", all_configs.len());
 
     Ok(all_configs)
 }

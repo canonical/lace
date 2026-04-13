@@ -79,7 +79,7 @@ impl LaceLoadedImage {
         } else {
             MemAttributes::empty()
         };
-        crate::debugln!("Setting base memory attributes: {:?}", base_attrs);
+        log::debug!("Setting base memory attributes: {:?}", base_attrs);
         mem::change_mem_attrs(image_base..(image_base + alloc_size as u64), base_attrs)
             .map_err(LaceLoadImageError::MemoryAttributeError)?;
 
@@ -93,7 +93,7 @@ impl LaceLoadedImage {
                 pe.nt_hdrs.optional_header.size_of_headers as u64,
                 mem::PAGE_SIZE as u64
             );
-            crate::debugln!("Setting PE header memory attributes: WRITE_PROTECT | EXECUTE_PROTECT");
+            log::debug!("Setting PE header memory attributes: WRITE_PROTECT | EXECUTE_PROTECT");
             mem::change_mem_attrs(
                 image_base..(image_base + pe_header_size),
                 MemAttributes::WRITE_PROTECT | MemAttributes::EXECUTE_PROTECT,
@@ -136,7 +136,7 @@ impl LaceLoadedImage {
                     attrs |= MemAttributes::EXECUTE_PROTECT;
                 }
 
-                crate::debugln!(
+                log::debug!(
                     "Setting section memory attributes for section at {:#x}-{:#x}: {:?}",
                     sec_start,
                     sec_end,
@@ -147,7 +147,7 @@ impl LaceLoadedImage {
             }
         }
 
-        crate::debugln!(
+        log::debug!(
             "Loaded EFI image at {:p}, size {:#x}",
             pages.as_ptr(),
             pe.nt_hdrs.optional_header.size_of_image
