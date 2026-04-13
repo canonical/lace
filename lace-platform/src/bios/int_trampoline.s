@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-# BIOS Interrupt Trampoline Assembly
+# BIOS Interrupt Trampoline Assembly
 # This code switches the CPU from Long Mode to Real Mode,
 # performs a BIOS interrupt call, and then switches back to Long Mode.
 
@@ -22,7 +22,7 @@ bios_call_asm:
     push %r14
     push %r15
 
-    # Save RSP
+    # Save RSP
     mov %rsp, save_rsp
 
 
@@ -37,7 +37,7 @@ bios_call_asm:
 
 .code32
 .mode32:
-    # Load 32-bit Data Segments
+    # Load 32-bit Data Segments
     mov $SEG_DATA32, %ax
     mov %ax, %ds
     mov %ax, %es
@@ -50,7 +50,7 @@ bios_call_asm:
     and $0x7FFFFFFF, %eax
     mov %eax, %cr0
 
-    # Disable Long Mode in EFER
+    # Disable Long Mode in EFER
     mov $0xC0000080, %ecx
     rdmsr
     and $0xFFFFFEFF, %eax
@@ -61,7 +61,7 @@ bios_call_asm:
 
 .code16
 .mode16:
-    # Load 16-bit Data Segments
+    # Load 16-bit Data Segments
     mov $SEG_DATA16, %ax
     mov %ax, %ds
     mov %ax, %es
@@ -87,7 +87,7 @@ bios_call_asm:
     mov %ax, %fs
     mov %ax, %gs
 
-    # Setup Real Mode stack
+    # Setup Real Mode stack
     mov $rm_stack_top - 0x10000, %sp
 
     # Load Real Mode IDT (IVT at 0x0000)
@@ -111,7 +111,7 @@ bios_call_asm:
     pushl %ss:24(%bp)
     popl %ebp
 
-    # Enable interrupts
+    # Enable interrupts
     sti
 
     # Call BIOS Interrupt (with patched int number)
@@ -144,7 +144,7 @@ int_instruction:
     popl %eax
     mov %eax, %ss:24(%bp)
 
-    # Enable Protected Mode in CR0
+    # Enable Protected Mode in CR0
     mov %cr0, %eax
     or $1, %eax
     mov %eax, %cr0
@@ -155,7 +155,7 @@ int_instruction:
 .code32
 .pmode32:
 
-    # Reload 32-bit Data Segments
+    # Reload 32-bit Data Segments
     mov $SEG_DATA32, %ax
     mov %ax, %ds
     mov %ax, %es
@@ -169,7 +169,7 @@ int_instruction:
     or $0x100, %eax
     wrmsr
 
-    # Enable paging in CR0
+    # Enable paging in CR0
     mov %cr0, %eax
     or $0x80000000, %eax
     mov %eax, %cr0
@@ -180,7 +180,7 @@ int_instruction:
 .code64
 .long_mode:
 
-    # Reload 64-bit Data Segments
+    # Reload 64-bit Data Segments
     mov $SEG_DATA64, %ax
     mov %ax, %ds
     mov %ax, %es
@@ -188,10 +188,10 @@ int_instruction:
     mov %ax, %fs
     mov %ax, %gs
 
-    # Restore IDTR
+    # Restore IDTR
     lidt idtr
 
-    # Restore RSP
+    # Restore RSP
     mov save_rsp, %rsp
 
     pop %r15
@@ -222,7 +222,7 @@ rm_idtr:
 
 // .section .bss16
 
-# Real mode stack
+# Real mode stack
 .align 16
 rm_stack:
     .space 4096
