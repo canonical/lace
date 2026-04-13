@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
-# Assembly definitions
+# Assembly definitions
 
 # Segment descriptors
 .equ SEG_CODE64, 0x08

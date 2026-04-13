@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only
 // Copyright (C) 2026, Canonical Ltd.
-
 //! BIOS block device, disk I/O, and storage discovery.
 
 use crate::bios;

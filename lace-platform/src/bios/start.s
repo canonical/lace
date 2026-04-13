@@ -3,9 +3,9 @@
 # Long mode startup code
 # This code is entered after switching to long mode, but everything else
 # (GDT, IDT, page tables, stack) is still the temporary ones set up in the
-# 16-bit bootstrap.
+# 16-bit bootstrap.
 # This code sets up the permanent GDT, IDT, page tables, and stack
-# for the core long mode environment.
+# for the core long mode environment.
 
 .globl  _start, gdt, gdtr, idtr, stack, stack_top, pml4, pdp, pd
 
@@ -72,7 +72,7 @@ _start:
     # Call the BIOS entry point in Rust
     call lace_platform_bios_entry
 
-    # Hang here if main returns
+    # Hang here if main returns
 hang:
     hlt
     jmp hang
@@ -108,7 +108,7 @@ stack:
     .space 8192 # 8 KB stack
 stack_top:
 
-# Page tables
+# Page tables
 .align 4096
 pml4:
     .space 4096
