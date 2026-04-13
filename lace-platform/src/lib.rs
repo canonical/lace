@@ -7,11 +7,6 @@
 
 extern crate alloc;
 
-// Portable platform interface modules. Each defines the cross-platform
-// types and re-exports the active platform's concrete implementation.
-pub mod mem;
-pub mod tpm2;
-
 // Architecture-specific modules
 #[cfg(target_arch = "x86_64")]
 pub mod amd64;
@@ -31,36 +26,35 @@ use efi as p;
 #[cfg(feature = "mock")]
 use mock as p;
 
-// Re-export portable APIs from the active platform at the top-level namespace.
-// The list of APIs exported here constitutes the portable Lace platform API.
+// Re-export platform error type
 pub use p::Error;
+
+// Re-export entry point macro
+pub use lace_util_derive::entry;
 
 // Macros for text output that should always be available
 #[macro_export]
 macro_rules! print {
-    () => {};
-    ($($arg:tt)*) => {
-        $crate::console::print_impl(format_args!($($arg)*))
-    };
+    ($($arg:tt)*) => {{
+        use core::fmt::Write as _;
+        write!($crate::console::stdout(), $($arg)*).unwrap()
+    }};
 }
 
 #[macro_export]
 macro_rules! println {
-    () => {
-        $crate::console::println_impl(format_args!(""))
-    };
-    ($($arg:tt)*) => {
-        $crate::console::println_impl(format_args!($($arg)*))
-    };
+    ($($arg:tt)*) => {{
+        use core::fmt::Write as _;
+        writeln!($crate::console::stdout(), $($arg)*).unwrap()
+    }};
 }
 
 // Macros for debug text output that is only active in debug builds
 #[macro_export]
 #[cfg(debug_assertions)]
 macro_rules! debug {
-    () => {};
     ($($arg:tt)*) => {
-        $crate::console::print_impl(format_args!($($arg)*))
+        $crate::print!($($arg)*)
     };
 }
 
@@ -73,11 +67,8 @@ macro_rules! debug {
 #[macro_export]
 #[cfg(debug_assertions)]
 macro_rules! debugln {
-    () => {
-        $crate::console::println_impl(format_args!(""))
-    };
     ($($arg:tt)*) => {
-        $crate::console::println_impl(format_args!($($arg)*))
+        $crate::println!($($arg)*)
     };
 }
 
@@ -87,14 +78,9 @@ macro_rules! debugln {
     ($($arg:tt)*) => {};
 }
 
-pub use p::console;
-
-// Re-export derive macros
-pub use lace_util_derive::entry;
-
-pub mod hwid;
-
-// Unified filesystem module re-exporting common types and platform-specific functions
+pub mod console;
 pub mod fs;
-
+pub mod hwid;
 pub mod linux;
+pub mod mem;
+pub mod tpm2;

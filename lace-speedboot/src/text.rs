@@ -30,9 +30,11 @@ pub fn get_user_selection(max: usize) -> Result<usize, SpeedbootError> {
 
     // Read input character by character
     loop {
-        let key_event =
-            lace_platform::console::read_key().map_err(|_| SpeedbootError::InvalidSelection)?;
-        let c = key_event.char;
+        let input_event = lace_platform::console::Input::wait_input(
+            &mut lace_platform::console::stdin(),
+        )
+        .map_err(|_| SpeedbootError::InvalidSelection)?;
+        let c = input_event.char;
 
         if c == '\r' || c == '\n' {
             println!();
