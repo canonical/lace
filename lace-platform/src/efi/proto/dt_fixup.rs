@@ -3,7 +3,7 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! EFI device-tree fix-up protocol.
 
-use crate::efi::mem::{
+use crate::mem::{
     MemoryType, PageAllocation, PageAllocationConstraint, PageAllocationIface, page_count,
 };
 

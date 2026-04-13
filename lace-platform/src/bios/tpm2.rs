@@ -4,7 +4,7 @@
 //! BIOS TPM2 abstraction.
 
 use crate::Error;
-pub use crate::iface::tpm2::*;
+use crate::tpm2::*;
 
 /// This is a no-op, we probably don't really want to support TPM on BIOS.
 /// But if we end up having a native driver it might be worth wiring up the interface.

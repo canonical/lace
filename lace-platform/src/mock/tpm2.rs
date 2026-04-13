@@ -4,7 +4,7 @@
 //! Mock TPM2 abstraction.
 
 use crate::Error;
-pub use crate::iface::tpm2::*;
+use crate::tpm2::*;
 
 pub fn hash_log_extend_event(
     _pcr_index: u32,
@@ -13,5 +13,5 @@ pub fn hash_log_extend_event(
     _event_data: &[u8],
     _data_to_hash: &[u8],
 ) -> Result<(), Error> {
-    todo!()
+    Err(Error)
 }

@@ -3,23 +3,16 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! UEFI memory management utilities.
 
+use crate::mem::{MemAttributes, PageAllocationConstraint, PageAllocationIface};
+use core::ptr::NonNull;
 use lace_util::peimage;
 use uefi::boot::ScopedProtocol;
-
-pub use crate::iface::mem::{MemAttributes, PageAllocationConstraint, PageAllocationIface};
-use core::ptr::NonNull;
 
 /// Type alias for UEFI physical addresses.
 pub type Address = u64;
 
 /// Page size used by the UEFI boot services page allocator.
 pub const PAGE_SIZE: usize = uefi::boot::PAGE_SIZE;
-
-/// Computes the number of pages required to hold a given size in bytes,
-/// rounding up to the nearest page.
-pub const fn page_count(size: usize) -> usize {
-    size.div_ceil(PAGE_SIZE)
-}
 
 /// Type alias for UEFI boot services page allocation types.
 pub type AllocateType = uefi::boot::AllocateType;

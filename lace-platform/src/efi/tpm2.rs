@@ -3,7 +3,7 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! UEFI TPM2 abstraction.
 
-pub use crate::iface::tpm2::*;
+use crate::tpm2::*;
 use crate::{Error, debugln};
 use uefi::proto::tcg::v2 as efi_tcg_v2;
 

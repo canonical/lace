@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only
 // Copyright (C) 2025, Canonical Ltd.
 // Authors: Mate Kukri <mate.kukri@canonical.com>
-//! Memory management interfaces.
 
 use core::{mem::MaybeUninit, ptr::NonNull};
 
@@ -138,3 +137,12 @@ bitflags::bitflags! {
         const EXECUTE_PROTECT = 0x4;
     }
 }
+
+/// Computes the number of pages required to hold a given size in bytes,
+/// rounding up to the nearest page.
+pub const fn page_count(size: usize) -> usize {
+    size.div_ceil(PAGE_SIZE)
+}
+
+// Re-export platform specific implementations
+pub use crate::p::mem::{MemoryType, PAGE_SIZE, PageAllocation, change_mem_attrs, nx_required};

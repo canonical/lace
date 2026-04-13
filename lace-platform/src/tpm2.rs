@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only
 // Copyright (C) 2026, Canonical Ltd.
 // Authors: Mate Kukri <mate.kukri@canonical.com>
-//! TPM2 interface module.
 
 use bitflags::bitflags;
 
@@ -73,3 +72,6 @@ impl EventType {
         self as u32
     }
 }
+
+// Re-export platform specific implementations
+pub use crate::p::tpm2::hash_log_extend_event;

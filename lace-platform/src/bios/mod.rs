@@ -9,12 +9,12 @@ use core::arch::global_asm;
 use lace_util::Display;
 use lace_util::smbios::{Smbios3EntryPoint, SmbiosEntryPoint};
 
-pub mod allocator;
 pub mod console;
 pub mod e820;
 pub mod fs;
 pub mod int;
 pub mod linux;
+pub mod mem;
 pub mod tpm2;
 
 pub use console::{print_impl, println_impl};
@@ -117,7 +117,7 @@ fn panic_handler(info: &core::panic::PanicInfo) -> ! {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn lace_platform_bios_entry() -> ! {
-    allocator::init();
+    mem::init();
 
     unsafe extern "Rust" {
         fn lace_app_main() -> Result<(), Error>;

@@ -2,15 +2,14 @@
 // Copyright (C) 2025, Canonical Ltd.
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 
-//! BIOS Global Allocator
-
 use super::e820::{E820Entry, E820MemoryType, get_memory_map};
+use crate::mem::MemAttributes;
 use linked_list_allocator::LockedHeap;
 
 #[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
+static GLOBAL_ALLOCATOR: LockedHeap = LockedHeap::empty();
 
-pub fn init() {
+pub(super) fn init() {
     let mut entries = [E820Entry::default(); 64];
     let count = get_memory_map(&mut entries);
 
@@ -43,11 +42,29 @@ pub fn init() {
 
     if best_size > 0 {
         unsafe {
-            ALLOCATOR
+            GLOBAL_ALLOCATOR
                 .lock()
                 .init(best_start as *mut u8, best_size as usize);
         }
     } else {
         panic!("Could not find suitable memory for heap");
     }
+}
+
+pub const PAGE_SIZE: usize = 4096;
+
+pub enum MemoryType {}
+
+pub struct PageAllocation {}
+
+pub fn change_mem_attrs(
+    _addr_range: core::ops::Range<u64>,
+    _attrs: MemAttributes,
+) -> Result<(), crate::Error> {
+    // No-op on BIOS.
+    Ok(())
+}
+
+pub fn nx_required() -> bool {
+    false
 }
