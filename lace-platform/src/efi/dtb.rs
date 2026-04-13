@@ -3,11 +3,11 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! Device tree related EFI functionality.
 
-use crate::efi::mem::{
-    MemoryType, PageAllocation, PageAllocationConstraint, PageAllocationIface, page_count,
-};
 use crate::efi::open_protocol_exclusive;
 use crate::efi::proto::dt_fixup;
+use crate::mem::{
+    MemoryType, PageAllocation, PageAllocationConstraint, PageAllocationIface, page_count,
+};
 
 use lace_util::fdt::Fdt;
 

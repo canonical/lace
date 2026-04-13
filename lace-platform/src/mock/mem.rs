@@ -6,7 +6,7 @@
 use lace_util::Display;
 use spin::Mutex;
 
-use crate::iface::mem::{MemAttributes, PageAllocationConstraint, PageAllocationIface};
+use crate::mem::{MemAttributes, PageAllocationConstraint, PageAllocationIface};
 use core::ptr::NonNull;
 
 /// Address type for the sandbox platform.
@@ -15,11 +15,8 @@ pub type Address = usize;
 /// Page size for the sandbox platform. (This is an arbitrary choice.)
 pub const PAGE_SIZE: usize = 4096;
 
-/// Computes the number of pages required to hold a given size in bytes,
-/// rounding up to the nearest page.
-pub const fn page_count(size: usize) -> usize {
-    size.div_ceil(PAGE_SIZE)
-}
+/// Mock platform does not distinguish memory types
+pub struct MemoryType;
 
 /// Default alignment when none is specified (page-aligned).
 const DEFAULT_ALIGNMENT: usize = PAGE_SIZE;

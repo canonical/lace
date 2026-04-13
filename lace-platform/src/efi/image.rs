@@ -3,8 +3,8 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! EFI image loading.
 
-use super::mem::{
-    MemoryType, PageAllocation, PageAllocationConstraint, PageAllocationIface, page_count,
+use crate::mem::{
+    self, MemAttributes, MemoryType, PageAllocation, PageAllocationConstraint, PageAllocationIface,
 };
 use core::ffi::c_void;
 use lace_util::Display;
@@ -49,15 +49,15 @@ impl LaceLoadedImage {
             & peimage::DLLCHARACTERISTICS_NX_COMPAT
             != 0;
 
-        if super::mem::nx_required() && !nx_compat {
+        if crate::mem::nx_required() && !nx_compat {
             // NX is required but the image is not NX compatible.
             return Err(LaceLoadImageError::NxPolicyViolation);
         }
         // NX compatibility requires page-aligned image size.
         if nx_compat
-            && ((pe.nt_hdrs.optional_header.section_alignment as usize) < super::mem::PAGE_SIZE
+            && ((pe.nt_hdrs.optional_header.section_alignment as usize) < mem::PAGE_SIZE
                 || !(pe.nt_hdrs.optional_header.section_alignment as usize)
-                    .is_multiple_of(super::mem::PAGE_SIZE))
+                    .is_multiple_of(mem::PAGE_SIZE))
         {
             return Err(LaceLoadImageError::NxPolicyViolation);
         }
@@ -65,22 +65,22 @@ impl LaceLoadedImage {
         let mut pages = PageAllocation::new_zeroed(
             PageAllocationConstraint::AnyAddress,
             Some(MemoryType::LOADER_CODE),
-            page_count(pe.nt_hdrs.optional_header.size_of_image as usize),
+            mem::page_count(pe.nt_hdrs.optional_header.size_of_image as usize),
             None,
         )
         .map_err(LaceLoadImageError::MemoryAllocationError)?;
 
         let image_base = pages.as_ptr() as u64;
-        let alloc_size = pages.pages() * super::mem::PAGE_SIZE;
+        let alloc_size = pages.pages() * mem::PAGE_SIZE;
 
         // If the image is NX compatible set the base policy as EXECUTE_PROTECT, otherwise no protection.
         let base_attrs = if nx_compat {
-            super::mem::MemAttributes::EXECUTE_PROTECT
+            MemAttributes::EXECUTE_PROTECT
         } else {
-            super::mem::MemAttributes::empty()
+            MemAttributes::empty()
         };
         crate::debugln!("Setting base memory attributes: {:?}", base_attrs);
-        super::mem::change_mem_attrs(image_base..(image_base + alloc_size as u64), base_attrs)
+        mem::change_mem_attrs(image_base..(image_base + alloc_size as u64), base_attrs)
             .map_err(LaceLoadImageError::MemoryAttributeError)?;
 
         // Relocate the image into the allocated pages.
@@ -91,13 +91,12 @@ impl LaceLoadedImage {
             // Set PE header as read-only.
             let pe_header_size = align_up!(
                 pe.nt_hdrs.optional_header.size_of_headers as u64,
-                super::mem::PAGE_SIZE as u64
+                mem::PAGE_SIZE as u64
             );
             crate::debugln!("Setting PE header memory attributes: WRITE_PROTECT | EXECUTE_PROTECT");
-            super::mem::change_mem_attrs(
+            mem::change_mem_attrs(
                 image_base..(image_base + pe_header_size),
-                super::mem::MemAttributes::WRITE_PROTECT
-                    | super::mem::MemAttributes::EXECUTE_PROTECT,
+                MemAttributes::WRITE_PROTECT | MemAttributes::EXECUTE_PROTECT,
             )
             .map_err(LaceLoadImageError::MemoryAttributeError)?;
 
@@ -109,10 +108,10 @@ impl LaceLoadedImage {
                 let (shdr, _) = section.map_err(LaceLoadImageError::PeError)?;
                 let sec_start = image_base + shdr.virtual_address as u64;
                 let sec_end =
-                    sec_start + align_up!(shdr.virtual_size as u64, super::mem::PAGE_SIZE as u64);
+                    sec_start + align_up!(shdr.virtual_size as u64, mem::PAGE_SIZE as u64);
 
                 // NX requires section start to be page-aligned.
-                if sec_start != align_up!(sec_start, super::mem::PAGE_SIZE as u64) {
+                if sec_start != align_up!(sec_start, mem::PAGE_SIZE as u64) {
                     return Err(LaceLoadImageError::NxPolicyViolation);
                 }
                 // NX requires no W&X sections.
@@ -123,18 +122,18 @@ impl LaceLoadedImage {
                 }
 
                 // Set section attributes
-                let mut attrs = super::mem::MemAttributes::empty();
+                let mut attrs = MemAttributes::empty();
                 if shdr.characteristics & peimage::SCN_MEM_READ == 0 {
                     // Not readable
-                    attrs |= super::mem::MemAttributes::READ_PROTECT;
+                    attrs |= MemAttributes::READ_PROTECT;
                 }
                 if shdr.characteristics & peimage::SCN_MEM_WRITE == 0 {
                     // Not writable
-                    attrs |= super::mem::MemAttributes::WRITE_PROTECT;
+                    attrs |= MemAttributes::WRITE_PROTECT;
                 }
                 if shdr.characteristics & peimage::SCN_MEM_EXECUTE == 0 {
                     // Not executable
-                    attrs |= super::mem::MemAttributes::EXECUTE_PROTECT;
+                    attrs |= MemAttributes::EXECUTE_PROTECT;
                 }
 
                 crate::debugln!(
@@ -143,7 +142,7 @@ impl LaceLoadedImage {
                     sec_end,
                     attrs
                 );
-                super::mem::change_mem_attrs(sec_start..sec_end, attrs)
+                mem::change_mem_attrs(sec_start..sec_end, attrs)
                     .map_err(LaceLoadImageError::MemoryAttributeError)?;
             }
         }

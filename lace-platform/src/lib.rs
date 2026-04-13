@@ -10,10 +10,10 @@ extern crate alloc;
 use alloc::vec::Vec;
 use lace_util::fdt::node::FdtNode;
 
-// Interfaces for platform implementations.
-// These are not strictly necessary as the active platform is chosen at compile time,
-// but they help to clarify the expected API surface for each platform.
-pub mod iface;
+// Portable platform interface modules. Each defines the cross-platform
+// types and re-exports the active platform's concrete implementation.
+pub mod mem;
+pub mod tpm2;
 
 // Architecture-specific modules
 #[cfg(target_arch = "x86_64")]
@@ -108,8 +108,6 @@ pub mod fs;
 pub mod linux {
     pub use super::p::linux::{BootLinuxError, boot_linux};
 }
-
-pub use p::tpm2;
 
 /// Determine platform compatibility using firmware-provided device tree.
 /// # Safety
