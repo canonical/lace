@@ -15,8 +15,10 @@ pub mod tpm2;
 /// Platform specific error type
 pub use uefi::Error;
 
-/// Re-export common filesystem types from the base module
-pub use super::fs::base::{BlockDevice, DirEntry, File, Filesystem, FsError};
+#[panic_handler]
+fn panic_handler(info: &core::panic::PanicInfo) -> ! {
+    crate::console::panic(info)
+}
 
 /// Opens the first instance of the given protocol in exclusive mode.
 fn open_first_protocol_exclusive<T: uefi::proto::Protocol>()

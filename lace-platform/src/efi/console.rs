@@ -33,6 +33,11 @@ impl Output for OutputImpl {
         uefi::system::with_stdout(|stdout| stdout.set_cursor_position(x, y))?;
         Ok(())
     }
+
+    fn clear_screen(&mut self) -> Result<(), crate::Error> {
+        uefi::system::with_stdout(|stdout| stdout.clear())?;
+        Ok(())
+    }
 }
 
 pub struct InputImpl {

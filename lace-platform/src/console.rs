@@ -91,6 +91,10 @@ impl Output for LockedConsole {
     fn set_position(&mut self, x: usize, y: usize) -> Result<(), crate::Error> {
         STDOUT.lock().set_position(x, y)
     }
+
+    fn clear_screen(&mut self) -> Result<(), crate::Error> {
+        STDOUT.lock().clear_screen()
+    }
 }
 
 /// Stateless handle implementing [`Input`] by locking the console
@@ -103,11 +107,36 @@ impl Input for LockedInput {
     }
 }
 
+/// Render the panic banner and halt forever.
+///
+/// Intended for bare-metal platforms that have no stderr; hosted runs
+/// simply do not call this and let the normal `std` panic machinery
+/// unwind or abort.
+pub fn panic(info: &dyn core::fmt::Display) -> ! {
+    use core::fmt::Write as _;
+    log::error!("{}", info);
+    let mut stdout = stdout();
+    let _ = stdout.clear_screen();
+    let _ = writeln!(stdout, "{0:=<80}", "");
+    let _ = writeln!(stdout, "{: ^80}", "PANIC");
+    let _ = writeln!(stdout, "{0:=<80}", "");
+    let _ = writeln!(stdout);
+    let _ = writeln!(stdout, "{}", info);
+    let _ = writeln!(stdout);
+    let _ = writeln!(stdout, "{0:-<80}", "");
+    let _ = writeln!(stdout, "System halted.");
+    loop {
+        core::hint::spin_loop();
+    }
+}
+
 /// Output driver
 pub trait Output: core::fmt::Write {
     fn get_position(&mut self) -> Result<(usize, usize), crate::Error>;
 
     fn set_position(&mut self, x: usize, y: usize) -> Result<(), crate::Error>;
+
+    fn clear_screen(&mut self) -> Result<(), crate::Error>;
 }
 
 /// Input driver
