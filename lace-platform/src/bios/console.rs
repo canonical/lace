@@ -48,6 +48,16 @@ impl Output for OutputImpl {
     fn set_position(&mut self, _x: usize, _y: usize) -> Result<(), crate::Error> {
         Ok(())
     }
+
+    fn clear_screen(&mut self) -> Result<(), crate::Error> {
+        let mut regs = BiosRegisters::new();
+        // INT 10h AH=00h AL=03h: set video mode 80x25 text (clears the screen).
+        regs.eax = 0x0003;
+        unsafe {
+            bios_call(0x10, &mut regs);
+        }
+        Ok(())
+    }
 }
 
 /// BIOS console input

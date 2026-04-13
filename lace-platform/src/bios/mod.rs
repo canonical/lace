@@ -32,13 +32,7 @@ impl From<fs::DiskError> for Error {
 
 #[panic_handler]
 fn panic_handler(info: &core::panic::PanicInfo) -> ! {
-    use core::fmt::Write as _;
-    let _ = writeln!(crate::console::stdout(), "PANIC: {}", info);
-    loop {
-        unsafe {
-            core::arch::asm!("hlt");
-        }
-    }
+    crate::console::panic(info)
 }
 
 #[unsafe(no_mangle)]

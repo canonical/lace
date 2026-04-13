@@ -4,6 +4,7 @@
 //! Mock console abstraction.
 
 use crate::console::{Input, InputEvent, Output};
+use core::fmt::Write;
 
 pub struct OutputImpl {
     _private: (),
@@ -31,6 +32,11 @@ impl Output for OutputImpl {
 
     fn set_position(&mut self, _x: usize, _y: usize) -> Result<(), crate::Error> {
         Ok(())
+    }
+
+    fn clear_screen(&mut self) -> Result<(), crate::Error> {
+        // ANSI: clear screen + move cursor to home.
+        self.write_str("\x1b[2J\x1b[H").map_err(|_| crate::Error)
     }
 }
 

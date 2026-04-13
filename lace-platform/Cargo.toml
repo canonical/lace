@@ -13,7 +13,7 @@ linked_list_allocator = { workspace = true, optional = true }
 log.workspace = true
 spin.workspace = true
 zerocopy = { workspace = true, features = ["derive"] }
-uefi = { workspace = true, features = ["global_allocator", "panic_handler"], optional = true }
+uefi = { workspace = true, features = ["global_allocator"], optional = true }
 uefi-raw = { workspace = true, optional = true }
 
 [features]
