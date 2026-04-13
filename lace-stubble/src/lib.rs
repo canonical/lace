@@ -9,7 +9,7 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 use lace_platform::debugln;
-use lace_platform::dtb::install_dtb;
+use lace_platform::hwid::install_dtb;
 use lace_platform::linux::boot_linux;
 use lace_platform::tpm2::{self, EventType, ExtendFlags};
 use lace_util::Display;
@@ -108,10 +108,10 @@ pub fn boot_stubble_image<'image>(
 
     // First try to get platform compatible from firmware DTB
     // If that fails, try using CHID matching against .hwids section
-    let compatible =
-        unsafe { lace_platform::platform_compatible_using_firmware_dtb() }.or_else(|| {
+    let compatible = unsafe { lace_platform::hwid::platform_compatible_using_firmware_dtb() }
+        .or_else(|| {
             hwids
-                .map(|hwids| lace_platform::platform_compatible_using_hwids(hwids))
+                .map(|hwids| lace_platform::hwid::platform_compatible_using_hwids(hwids))
                 .unwrap_or(None)
         });
     debugln!(

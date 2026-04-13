@@ -16,7 +16,7 @@ pub fn hash_log_extend_event(
     event_data: &[u8],
     data_to_hash: &[u8],
 ) -> Result<(), Error> {
-    if let Ok(mut proto) = super::open_protocol_exclusive::<efi_tcg_v2::Tcg>() {
+    if let Ok(mut proto) = super::open_first_protocol_exclusive::<efi_tcg_v2::Tcg>() {
         // Prepare buffer for event
         // Unfortunately the exact size of PcrEventInputs header is not exposed,
         // so we allocate a bit more than needed.

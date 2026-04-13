@@ -126,7 +126,8 @@ pub fn change_mem_attrs(
     addr_range: core::ops::Range<u64>,
     attrs: MemAttributes,
 ) -> Result<(), uefi::Error> {
-    let Ok(mem_prot) = super::open_protocol_exclusive::<uefi::proto::security::MemoryProtection>()
+    let Ok(mem_prot) =
+        super::open_first_protocol_exclusive::<uefi::proto::security::MemoryProtection>()
     else {
         crate::debugln!(
             "EFI Memory Protection Protocol not available, cannot change memory attributes"
@@ -188,7 +189,7 @@ pub fn nx_required() -> bool {
 }
 
 /// Initialize UEFI memory management utilities.
-pub(super) fn efi_mem_init() {
+pub(super) fn init() {
     // Determine if NX is required by the firmware.
     // We use the NX_COMPAT flag in the currently running image as a proxy.
     // 1. If an NX_COMPAT image is already running the firmware _might_ enforce NX thus we should too.

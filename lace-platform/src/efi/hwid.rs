@@ -3,13 +3,16 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! Device tree related EFI functionality.
 
-use crate::efi::open_protocol_exclusive;
-use crate::efi::proto::dt_fixup;
+use super::{
+    open_first_protocol_exclusive,
+    proto::{dt_fixup::DtFixupProtocol, edid_discovered::EdidDiscoveredProtocol},
+};
 use crate::mem::{
     MemoryType, PageAllocation, PageAllocationConstraint, PageAllocationIface, page_count,
 };
-
+use core::ops::Deref;
 use lace_util::fdt::Fdt;
+use lace_util::smbios::{Smbios3EntryPoint, SmbiosEntryPoint};
 
 /// EFI configuration table pointing to a device tree.
 /// The DTB must be contained in memory of type EfiACPIReclaimMemory.
@@ -43,7 +46,7 @@ impl Drop for DtbReceipt {
 /// which other code might have references to. The caller must ensure that
 /// no such references exist.
 pub unsafe fn install_dtb(dtb: &[u8]) -> Result<impl Drop, uefi::Error> {
-    let buf: PageAllocation = match open_protocol_exclusive::<dt_fixup::DtFixupProtocol>() {
+    let buf: PageAllocation = match open_first_protocol_exclusive::<DtFixupProtocol>() {
         Ok(mut proto) => proto.fixup_owned(dtb)?,
         Err(_) => PageAllocation::new_init_prefix(
             PageAllocationConstraint::AnyAddress,
@@ -74,10 +77,68 @@ pub unsafe fn install_dtb(dtb: &[u8]) -> Result<impl Drop, uefi::Error> {
 /// The returned `Fdt` is valid as long as the DTB configuration table remains installed
 /// in the EFI system table. The caller must ensure this is the case.
 pub unsafe fn find_dtb() -> Option<Fdt<'static>> {
-    let ptr: *const u8 = super::find_config_table(DTB_TABLE_GUID)?;
+    let ptr: *const u8 = find_config_table(DTB_TABLE_GUID)?;
     unsafe {
         // SAFETY: The pointer from the configuration table is valid as long as the table is installed,
         // which is guaranteed by the caller.
         Fdt::from_ptr(ptr).ok()
     }
+}
+
+/// Opaque reference to EDID data obtained from the EDID Discovered Protocol.
+struct EdidRef(uefi::boot::ScopedProtocol<EdidDiscoveredProtocol>);
+
+impl Deref for EdidRef {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        self.0.edid_data()
+    }
+}
+
+/// Finds the first EDID Discovered Protocol instance and returns the EDID data attached to it.
+pub fn find_edid() -> Option<impl Deref<Target = [u8]>> {
+    open_first_protocol_exclusive::<EdidDiscoveredProtocol>()
+        .ok()
+        .map(EdidRef)
+}
+
+/// Finds SMBIOS tables in the UEFI configuration tables.
+pub fn find_smbios_tables() -> Option<(&'static [u8], &'static [u8])> {
+    unsafe {
+        if let Some(ptr) =
+            find_config_table::<Smbios3EntryPoint>(uefi::table::cfg::ConfigTableEntry::SMBIOS3_GUID)
+            && (*ptr).anchor_string.eq(b"_SM3_")
+        {
+            return Some((
+                core::slice::from_raw_parts(ptr as *const u8, size_of::<Smbios3EntryPoint>()),
+                core::slice::from_raw_parts(
+                    (*ptr).table_address as *const u8,
+                    (*ptr).table_maximum_size as _,
+                ),
+            ));
+        }
+        if let Some(ptr) =
+            find_config_table::<SmbiosEntryPoint>(uefi::table::cfg::ConfigTableEntry::SMBIOS_GUID)
+            && (*ptr).anchor_string.eq(b"_SM_")
+        {
+            return Some((
+                core::slice::from_raw_parts(ptr as *const u8, size_of::<SmbiosEntryPoint>()),
+                core::slice::from_raw_parts((*ptr).table_address as _, (*ptr).table_length as _),
+            ));
+        }
+    }
+    None
+}
+
+/// Finds a configuration table by its GUID.
+fn find_config_table<T>(guid: uefi::Guid) -> Option<*const T> {
+    uefi::system::with_config_table(|tables| {
+        for table in tables.iter() {
+            if table.guid.eq(&guid) && !table.address.is_null() {
+                return Some(table.address as *const T);
+            }
+        }
+        None
+    })
 }
