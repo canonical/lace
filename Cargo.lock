@@ -269,6 +269,7 @@ dependencies = [
  "lace-util",
  "lace-util-derive",
  "linked_list_allocator",
+ "log",
  "spin",
  "uefi",
  "uefi-raw",
@@ -282,6 +283,7 @@ dependencies = [
  "lace-platform",
  "lace-stubble",
  "lace-util",
+ "log",
 ]
 
 [[package]]
@@ -290,6 +292,7 @@ version = "0.1.0"
 dependencies = [
  "lace-platform",
  "lace-util",
+ "log",
  "uefi",
 ]
 

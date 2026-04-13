@@ -8,7 +8,6 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
-use lace_platform::debugln;
 use lace_platform::hwid::install_dtb;
 use lace_platform::linux::boot_linux;
 use lace_platform::tpm2::{self, EventType, ExtendFlags};
@@ -60,7 +59,7 @@ pub fn boot_stubble_image<'image>(
     let section_filter =
         |result: Result<(SectionHeader, &'image [u8]), PeError>| -> Result<(), BootStubbleError> {
             let (sect, data) = result.map_err(BootStubbleError::PeError)?;
-            debugln!(
+            log::debug!(
                 "  {:<8} {:08x} {:08x}",
                 str::from_utf8(sect.name()).unwrap(),
                 sect.virtual_address,
@@ -88,7 +87,7 @@ pub fn boot_stubble_image<'image>(
             Ok(())
         };
 
-    debugln!("PE sections");
+    log::debug!("PE sections");
     if raw {
         pe.raw_sections().try_for_each(section_filter)?;
     } else {
@@ -114,7 +113,7 @@ pub fn boot_stubble_image<'image>(
                 .map(|hwids| lace_platform::hwid::platform_compatible_using_hwids(hwids))
                 .unwrap_or(None)
         });
-    debugln!(
+    log::debug!(
         "Determined platform compatible: {}",
         compatible.unwrap_or("<none>")
     );
@@ -127,7 +126,7 @@ pub fn boot_stubble_image<'image>(
             let dtb_fdt = match lace_util::fdt::Fdt::new(dtb_data) {
                 Ok(fdt) => fdt,
                 Err(e) => {
-                    debugln!("Skipping invalid .dtbauto section: {}", e);
+                    log::debug!("Skipping invalid .dtbauto section: {}", e);
                     continue;
                 }
             };
@@ -136,24 +135,24 @@ pub fn boot_stubble_image<'image>(
                 .and_then(|n| n.compatible())
                 .and_then(|compatible| compatible.all().next())
             else {
-                debugln!("Skipping .dtbauto section with no compatible property");
+                log::debug!("Skipping .dtbauto section with no compatible property");
                 continue;
             };
             if dtb_compatible == compatible {
-                debugln!("Installing DTB for compatible {}", compatible);
+                log::debug!("Installing DTB for compatible {}", compatible);
                 installed_dtb =
                     unsafe { Some(install_dtb(dtb_data).expect("failed to install DTB")) };
                 break;
             }
         }
         if installed_dtb.is_none() {
-            debugln!(
+            log::debug!(
                 "No matching DTB found for compatible {}, skipping DTB installation",
                 compatible
             );
         }
     } else {
-        debugln!("No platform compatible determined, skipping DTB installation");
+        log::debug!("No platform compatible determined, skipping DTB installation");
     }
 
     // Measure kernel command line to TPM 2.0 - PCR 12
@@ -168,7 +167,7 @@ pub fn boot_stubble_image<'image>(
     ) {
         Ok(()) => (),
         Err(err) => {
-            debugln!("Failed to measure kernel command line: {}", err);
+            log::debug!("Failed to measure kernel command line: {}", err);
         }
     }
 

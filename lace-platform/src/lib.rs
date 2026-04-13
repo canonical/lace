@@ -32,52 +32,6 @@ pub use p::Error;
 // Re-export entry point macro
 pub use lace_util_derive::entry;
 
-// Macros for text output that should always be available
-#[macro_export]
-macro_rules! print {
-    ($($arg:tt)*) => {{
-        use core::fmt::Write as _;
-        write!($crate::console::stdout(), $($arg)*).unwrap()
-    }};
-}
-
-#[macro_export]
-macro_rules! println {
-    ($($arg:tt)*) => {{
-        use core::fmt::Write as _;
-        writeln!($crate::console::stdout(), $($arg)*).unwrap()
-    }};
-}
-
-// Macros for debug text output that is only active in debug builds
-#[macro_export]
-#[cfg(debug_assertions)]
-macro_rules! debug {
-    ($($arg:tt)*) => {
-        $crate::print!($($arg)*)
-    };
-}
-
-#[macro_export]
-#[cfg(not(debug_assertions))]
-macro_rules! debug {
-    ($($arg:tt)*) => {};
-}
-
-#[macro_export]
-#[cfg(debug_assertions)]
-macro_rules! debugln {
-    ($($arg:tt)*) => {
-        $crate::println!($($arg)*)
-    };
-}
-
-#[macro_export]
-#[cfg(not(debug_assertions))]
-macro_rules! debugln {
-    ($($arg:tt)*) => {};
-}
-
 pub mod console;
 pub mod fs;
 pub mod hwid;

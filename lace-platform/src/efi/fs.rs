@@ -26,14 +26,14 @@ pub struct UefiFilesystem {
 impl UefiFilesystem {
     /// Create a new UEFI filesystem from a handle.
     pub fn new(handle: uefi::Handle) -> Result<Self, uefi::Error> {
-        crate::debugln!(
+        log::debug!(
             "[FS] Attempting to open UEFI SimpleFileSystem on handle {:?}",
             handle
         );
         let proto = uefi::boot::open_protocol_exclusive::<uefi::proto::media::fs::SimpleFileSystem>(
             handle,
         )?;
-        crate::debugln!("[FS] Successfully opened UEFI SimpleFileSystem");
+        log::debug!("[FS] Successfully opened UEFI SimpleFileSystem");
         Ok(Self { proto })
     }
 }
@@ -241,7 +241,7 @@ fn is_logical_partition(handle: uefi::Handle) -> bool {
 fn classify_handle(handle: uefi::Handle, result: &mut DiscoveredStorage) {
     // Try UEFI SimpleFileSystem first (FAT/FAT32 on ESP)
     if let Ok(fs) = UefiFilesystem::new(handle) {
-        crate::debugln!("[EFI] Found SimpleFileSystem on handle {:?}", handle);
+        log::debug!("[EFI] Found SimpleFileSystem on handle {:?}", handle);
         result.filesystems.push(Box::new(fs));
         return;
     }
@@ -250,11 +250,11 @@ fn classify_handle(handle: uefi::Handle, result: &mut DiscoveredStorage) {
     if is_logical_partition(handle) {
         match UefiBlockDevice::new(handle) {
             Ok(dev) => {
-                crate::debugln!("[EFI] Found partition block device: {:?}", handle);
+                log::debug!("[EFI] Found partition block device: {:?}", handle);
                 result.partitions.push(Box::new(dev));
             }
             Err(e) => {
-                crate::debugln!("[EFI] Failed to open DiskIO on {:?}: {:?}", handle, e);
+                log::debug!("[EFI] Failed to open DiskIO on {:?}: {:?}", handle, e);
             }
         }
     }
@@ -267,7 +267,7 @@ fn enumerate_disk_io_handles() -> Vec<uefi::Handle> {
     )) {
         Ok(h) => h.to_vec(),
         Err(e) => {
-            crate::debugln!("[EFI] Failed to enumerate DiskIO handles: {:?}", e);
+            log::debug!("[EFI] Failed to enumerate DiskIO handles: {:?}", e);
             Vec::new()
         }
     }
@@ -310,7 +310,7 @@ fn get_parent_device_path_bytes(handle: uefi::Handle) -> Option<Vec<u8>> {
 /// Discover all storage.
 pub fn discover_storage() -> DiscoveredStorage {
     let handles = enumerate_disk_io_handles();
-    crate::debugln!("[EFI] Found {} DiskIO handles", handles.len());
+    log::debug!("[EFI] Found {} DiskIO handles", handles.len());
 
     let mut result = DiscoveredStorage::new();
 
@@ -336,25 +336,25 @@ pub fn discover_boot_storage() -> DiscoveredStorage {
         ) {
             Ok(li) => li,
             Err(e) => {
-                crate::debugln!("[EFI] Failed to open LoadedImage: {:?}", e);
+                log::debug!("[EFI] Failed to open LoadedImage: {:?}", e);
                 return result;
             }
         };
         match li.device() {
             Some(h) => h,
             None => {
-                crate::debugln!("[EFI] LoadedImage has no device handle");
+                log::debug!("[EFI] LoadedImage has no device handle");
                 return result;
             }
         }
     };
 
-    crate::debugln!("[EFI] Boot device handle: {:?}", boot_device_handle);
+    log::debug!("[EFI] Boot device handle: {:?}", boot_device_handle);
 
     let boot_parent = get_parent_device_path_bytes(boot_device_handle);
 
     let handles = enumerate_disk_io_handles();
-    crate::debugln!(
+    log::debug!(
         "[EFI] Scanning {} handles for boot disk siblings",
         handles.len()
     );

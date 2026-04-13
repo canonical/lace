@@ -100,10 +100,10 @@ pub fn boot_linux(
         params.hdr.ramdisk_image = initrd_addr;
         params.hdr.ramdisk_size = initrd_data.len() as u32;
 
-        crate::println!("Kernel Entry: 0x{:08X}", kernel_entry);
-        crate::println!("Initrd Addr:  0x{:08X}", initrd_addr);
-        crate::println!("Initrd Size:  0x{:08X}", initrd_data.len());
-        crate::println!("Init Size:    0x{:08X}", init_size);
+        log::debug!("Kernel Entry: 0x{:08X}", kernel_entry);
+        log::debug!("Initrd Addr:  0x{:08X}", initrd_addr);
+        log::debug!("Initrd Size:  0x{:08X}", initrd_data.len());
+        log::debug!("Init Size:    0x{:08X}", init_size);
 
         let kernel_start = kernel_entry as u32;
         let kernel_end = kernel_start + init_size as u32;
@@ -111,15 +111,12 @@ pub fn boot_linux(
         let initrd_end = initrd_start + initrd_data.len() as u32;
 
         if kernel_start < initrd_end && initrd_start < kernel_end {
-            crate::println!("WARNING: Initrd overlaps with kernel initialization memory!");
+            log::warn!("Initrd overlaps with kernel initialization memory");
         }
 
         let max_addr = header.initrd_addr_max;
         if initrd_addr > max_addr {
-            crate::println!(
-                "WARNING: Initrd above initrd_addr_max (0x{:08X})!",
-                max_addr
-            );
+            log::warn!("Initrd placed above the kernel's initrd_addr_max limit");
         }
     }
 
@@ -171,12 +168,12 @@ pub fn boot_linux(
     // Check if 64-bit entry is supported
     // XLF_KERNEL_64 = 1
     if (header.xloadflags & 1) == 0 {
-        crate::println!("Kernel does not support 64-bit entry (XLF_KERNEL_64 not set)");
+        log::error!("Kernel does not support 64-bit entry (XLF_KERNEL_64 not set)");
         return Err(BootLinuxError::Unsupported);
     }
 
     // Jump to Kernel
-    crate::println!("Jumping to Linux kernel at 0x{:08X}", kernel_entry);
+    log::debug!("Jumping to Linux kernel at 0x{:08X}", kernel_entry);
     let entry_64 = kernel_entry as u64 + 0x200;
     unsafe {
         core::arch::asm!(

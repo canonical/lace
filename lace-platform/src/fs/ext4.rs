@@ -16,7 +16,7 @@ pub struct Ext4Filesystem {
 impl Ext4Filesystem {
     /// Try to create a new ext4 filesystem from a block device.
     pub fn new(block_dev: Box<dyn crate::fs::base::BlockDevice>) -> Result<Self, FsError> {
-        crate::debugln!("[FS] Loading ext4 filesystem from block device");
+        log::debug!("[FS] Loading ext4 filesystem from block device");
 
         struct Adapter {
             dev: Box<dyn crate::fs::base::BlockDevice>,
@@ -37,11 +37,11 @@ impl Ext4Filesystem {
 
         let adapter = Adapter { dev: block_dev };
         let fs = ext4_view::Ext4::load(Box::new(adapter)).map_err(|e| {
-            crate::debugln!("[FS] Failed to load ext4 filesystem: {:?}", e);
+            log::debug!("[FS] Failed to load ext4 filesystem: {:?}", e);
             FsError::Invalid
         })?;
 
-        crate::debugln!("[FS] Successfully loaded ext4 filesystem");
+        log::debug!("[FS] Successfully loaded ext4 filesystem");
         Ok(Self { fs })
     }
 }
@@ -53,16 +53,16 @@ impl Filesystem for Ext4Filesystem {
             path
         } else {
             // ext4-view requires absolute paths
-            crate::debugln!(
+            log::debug!(
                 "[FS] ext4: open_file failed - path is not absolute: {}",
                 path
             );
             return Err(FsError::NotFound);
         };
 
-        crate::debugln!("[FS] ext4: opening file: {}", full_path);
+        log::debug!("[FS] ext4: opening file: {}", full_path);
         let file = self.fs.open(full_path).map_err(|e| {
-            crate::debugln!("[FS] ext4: failed to open {}: {:?}", full_path, e);
+            log::debug!("[FS] ext4: failed to open {}: {:?}", full_path, e);
             match e {
                 ext4_view::Ext4Error::NotFound => FsError::NotFound,
                 ext4_view::Ext4Error::IsADirectory => FsError::NotDirectory,
@@ -70,7 +70,7 @@ impl Filesystem for Ext4Filesystem {
             }
         })?;
 
-        crate::debugln!("[FS] ext4: successfully opened file: {}", full_path);
+        log::debug!("[FS] ext4: successfully opened file: {}", full_path);
         Ok(Box::new(Ext4File { file }))
     }
 
@@ -78,12 +78,12 @@ impl Filesystem for Ext4Filesystem {
         let full_path = if path.starts_with('/') {
             path
         } else {
-            crate::debugln!("[FS] ext4: file_exists - path not absolute: {}", path);
+            log::debug!("[FS] ext4: file_exists - path not absolute: {}", path);
             return false;
         };
 
         let exists = self.fs.exists(full_path).unwrap_or(false);
-        crate::debugln!("[FS] ext4: file_exists({}) = {}", full_path, exists);
+        log::debug!("[FS] ext4: file_exists({}) = {}", full_path, exists);
         exists
     }
 
@@ -131,7 +131,7 @@ impl File for Ext4File {
     }
 
     fn read_to_end(&mut self) -> Result<Vec<u8>, FsError> {
-        crate::debugln!("[FS] ext4: read_to_end called");
+        log::debug!("[FS] ext4: read_to_end called");
         let metadata = self.file.metadata();
         let size = metadata.len() as usize;
         let mut buf = vec![0u8; size];
@@ -149,7 +149,7 @@ impl File for Ext4File {
         }
 
         buf.truncate(total_read);
-        crate::debugln!("[FS] ext4: read_to_end read {} bytes", total_read);
+        log::debug!("[FS] ext4: read_to_end read {} bytes", total_read);
         Ok(buf)
     }
 

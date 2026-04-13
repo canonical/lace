@@ -3,8 +3,8 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! UEFI TPM2 abstraction.
 
+use crate::Error;
 use crate::tpm2::*;
-use crate::{Error, debugln};
 use uefi::proto::tcg::v2 as efi_tcg_v2;
 
 /// Hashes the given data, logs the event and extends the PCR with the hash.
@@ -31,7 +31,7 @@ pub fn hash_log_extend_event(
 
         proto.hash_log_extend_event(extend_flags_to_efi(flags), data_to_hash, event)
     } else {
-        debugln!("[efi] TCG2 protocol not available, skipping measurement");
+        log::debug!("TCG2 protocol not available, skipping measurement");
         Ok(())
     }
 }

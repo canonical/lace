@@ -27,6 +27,7 @@ ext4-view = { version = "0.9", default-features = false }
 fdt = { version = "0.1.5", default-features = false }
 libc = "0.2"
 linked_list_allocator = { version = "0.10.5" }
+log = { version = "0.4", default-features = false }
 proc-macro2 = "1.0"
 quote = "1.0"
 regex = "1.12.3"

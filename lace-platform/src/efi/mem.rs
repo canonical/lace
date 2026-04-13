@@ -106,7 +106,7 @@ impl Drop for PageAllocation {
         // Set memory as RWX before freeing. This is a workaround for an EDK2 bug
         // where freeing memory with certain attributes set can cause a crash.
         // See: https://github.com/rhboot/shim/blob/c4665d282072df2ed8ab6ae1d5fa0de41e5db02f/loader-proto.c#L194
-        crate::debugln!("WORKAROUND: Clearing memory attributes before freeing pages");
+        log::debug!("WORKAROUND: Clearing memory attributes before freeing pages");
         let _ = change_mem_attrs(
             self.as_ptr() as u64..(self.as_ptr() as u64 + (self.pages * PAGE_SIZE) as u64),
             MemAttributes::empty(),
@@ -129,14 +129,14 @@ pub fn change_mem_attrs(
     let Ok(mem_prot) =
         super::open_first_protocol_exclusive::<uefi::proto::security::MemoryProtection>()
     else {
-        crate::debugln!(
+        log::debug!(
             "EFI Memory Protection Protocol not available, cannot change memory attributes"
         );
         return Ok(());
     };
     let (set, clear) = lace_mem_attrs_to_uefi(&attrs);
     if !set.is_empty() {
-        crate::debugln!(
+        log::debug!(
             "Setting EFI memory attributes for range {:x}-{:x} to {:?}",
             addr_range.start,
             addr_range.end,
@@ -145,7 +145,7 @@ pub fn change_mem_attrs(
         mem_prot.set_memory_attributes(addr_range.clone(), set)?;
     }
     if !clear.is_empty() {
-        crate::debugln!(
+        log::debug!(
             "Clearing EFI memory attributes for range {:x}-{:x} to {:?}",
             addr_range.start,
             addr_range.end,
@@ -209,6 +209,6 @@ pub(super) fn init() {
     let nx_required = own_pe.nt_hdrs.optional_header.dll_characteristics
         & peimage::DLLCHARACTERISTICS_NX_COMPAT
         != 0;
-    crate::debugln!("EFI memory: NX required = {}", nx_required);
+    log::debug!("EFI memory: NX required = {}", nx_required);
     NX_REQUIRED.call_once(|| nx_required);
 }

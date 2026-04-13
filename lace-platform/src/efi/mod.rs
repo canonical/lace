@@ -31,6 +31,7 @@ fn open_first_protocol_exclusive<T: uefi::proto::Protocol>()
 #[uefi::entry]
 fn efi_main() -> uefi::Status {
     uefi::helpers::init().unwrap();
+    crate::console::init();
     mem::init();
 
     unsafe extern "Rust" {

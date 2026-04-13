@@ -35,10 +35,7 @@ fn main() -> Result<(), lace_platform::Error> {
             )
             .map(|r| {
                 r.unwrap_or_else(|err| {
-                    lace_platform::debugln!(
-                        "WARNING: command line contains invalid character: {}",
-                        err
-                    );
+                    log::warn!("command line contains invalid character: {}", err);
                     core::char::REPLACEMENT_CHARACTER
                 })
             })

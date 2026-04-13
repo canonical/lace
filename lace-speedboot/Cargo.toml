@@ -8,6 +8,7 @@ license = "GPL-2.0-only OR GPL-3.0-only"
 lace-util = { version = "0.1.0", path = "../lace-util", default-features = false, features = ["grub"] }
 lace-platform = { version = "0.1.0", path = "../lace-platform", default-features = false, features = ["ext4"] }
 lace-stubble = { version = "0.1.0", path = "../lace-stubble", default-features = false }
+log.workspace = true
 
 [features]
 default = ["mock"]
