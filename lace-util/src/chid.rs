@@ -228,7 +228,7 @@ pub fn chid_sources_from_smbios_and_edid(
             } else {
                 return false;
             };
-            cmp_maj_min(maj, min, 2, 4).is_ge()
+            (maj, min) >= (2, 4)
         })
         .unwrap_or_else(|| false);
 
