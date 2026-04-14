@@ -20,7 +20,6 @@ pub mod smbios;
 pub mod tempfile;
 pub mod units;
 
-use core::cmp::Ordering;
 use core::fmt::{self, Debug, Write};
 use zerocopy::byteorder::{ByteOrder, U16, U32};
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
@@ -288,14 +287,6 @@ impl<O: ByteOrder> Debug for OrderedGuid<O> {
     }
 }
 
-/// Compare two version numbers in "major.minor" format.
-pub fn cmp_maj_min(maj_a: u8, min_a: u8, maj_b: u8, min_b: u8) -> Ordering {
-    match maj_a.cmp(&maj_b) {
-        Ordering::Equal => min_a.cmp(&min_b),
-        ord => ord,
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -372,31 +363,6 @@ mod test {
         let debug_str = format!("{:?}", guid);
         assert!(debug_str.contains("guid_str"));
         assert!(debug_str.contains("12345678-1234-5678-9abc-def012345678"));
-    }
-
-    #[test]
-    fn test_cmp_maj_min_greater() {
-        assert_eq!(cmp_maj_min(2, 0, 1, 9), Ordering::Greater);
-    }
-
-    #[test]
-    fn test_cmp_maj_min_less() {
-        assert_eq!(cmp_maj_min(1, 5, 2, 0), Ordering::Less);
-    }
-
-    #[test]
-    fn test_cmp_maj_min_equal_major_greater_minor() {
-        assert_eq!(cmp_maj_min(2, 5, 2, 3), Ordering::Greater);
-    }
-
-    #[test]
-    fn test_cmp_maj_min_equal_major_less_minor() {
-        assert_eq!(cmp_maj_min(2, 3, 2, 5), Ordering::Less);
-    }
-
-    #[test]
-    fn test_cmp_maj_min_equal() {
-        assert_eq!(cmp_maj_min(2, 3, 2, 3), Ordering::Equal);
     }
 
     #[test]
