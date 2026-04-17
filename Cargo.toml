@@ -42,9 +42,3 @@ uefi = { version = "0.37.0" }
 uefi-raw = { version = "0.14.0" }
 zerocopy = "0.8.48"
 zip = { version = "8.4.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
-
-[profile.dev]
-panic = "abort"
-
-[profile.release]
-panic = "abort"
