@@ -33,9 +33,20 @@ impl From<PageAllocationConstraint<Address>> for uefi::boot::AllocateType {
     }
 }
 
-/// Resource holder for an allocation from the UEFI boot services page allocator.
+/// Resource holder for an allocation from the UEFI boot services page
+/// allocator.
+///
+/// UEFI only guarantees page-aligned allocations; for larger requested
+/// alignments we over-allocate and keep the original base around so
+/// `Drop` can release exactly what UEFI gave us.
 pub struct PageAllocation {
-    ptr: NonNull<u8>,
+    /// Base UEFI returned to us, passed back to `free_pages` on Drop.
+    raw: NonNull<u8>,
+    /// Page count UEFI actually allocated (may exceed `pages`).
+    raw_pages: usize,
+    /// Aligned pointer exposed to callers.
+    aligned: NonNull<u8>,
+    /// Page count requested by the caller (governs `as_u8_slice` length).
     pages: usize,
 }
 
@@ -52,16 +63,34 @@ impl PageAllocationIface<Address> for PageAllocation {
         pages: usize,
         alignment: Option<usize>,
     ) -> Result<Self, uefi::Error> {
-        // UEFI boot services only guarantee page-aligned memory.
-        // Reject requests for larger alignment.
-        if let Some(align) = alignment
-            && align > PAGE_SIZE
-        {
-            return Err(uefi::Error::new(uefi::Status::UNSUPPORTED, ()));
-        }
         let memory_type = memory_type.unwrap_or(MemoryType::LOADER_DATA);
-        let ptr = uefi::boot::allocate_pages(constraint.into(), memory_type, pages)?;
-        Ok(PageAllocation { ptr, pages })
+        let align = alignment.unwrap_or(PAGE_SIZE);
+        if !align.is_power_of_two() || align < PAGE_SIZE {
+            return Err(uefi::Error::new(uefi::Status::INVALID_PARAMETER, ()));
+        }
+        if align == PAGE_SIZE {
+            let ptr = uefi::boot::allocate_pages(constraint.into(), memory_type, pages)?;
+            return Ok(PageAllocation {
+                raw: ptr,
+                raw_pages: pages,
+                aligned: ptr,
+                pages,
+            });
+        }
+        // Over-allocate enough pages to align within the returned range.
+        let slop_pages = (align / PAGE_SIZE) - 1;
+        let raw_pages = pages
+            .checked_add(slop_pages)
+            .ok_or(uefi::Error::new(uefi::Status::INVALID_PARAMETER, ()))?;
+        let raw = uefi::boot::allocate_pages(constraint.into(), memory_type, raw_pages)?;
+        let aligned_addr = (raw.as_ptr() as usize + align - 1) & !(align - 1);
+        let aligned = NonNull::new(aligned_addr as *mut u8).unwrap();
+        Ok(PageAllocation {
+            raw,
+            raw_pages,
+            aligned,
+            pages,
+        })
     }
 
     fn pages(&self) -> usize {
@@ -69,34 +98,41 @@ impl PageAllocationIface<Address> for PageAllocation {
     }
 
     unsafe fn from_raw(ptr: NonNull<u8>, pages: usize) -> Self {
-        PageAllocation { ptr, pages }
+        PageAllocation {
+            raw: ptr,
+            raw_pages: pages,
+            aligned: ptr,
+            pages,
+        }
     }
 
     fn into_raw(self) -> (NonNull<u8>, usize) {
-        let (ptr, pages) = (self.ptr, self.pages);
+        let (ptr, pages) = (self.aligned, self.pages);
         core::mem::forget(self);
         (ptr, pages)
     }
 
     fn as_ptr(&self) -> *mut u8 {
-        self.ptr.as_ptr()
+        self.aligned.as_ptr()
     }
 
     fn as_u8_slice(&self) -> &[u8] {
         unsafe {
-            // SAFETY: `ptr` was allocated with `boot::allocate_pages` and is valid for `pages` pages.
-            // The resulting slice will have a lifetime tied to &self, so it cannot outlive the allocation.
-            // The memory might be uninitialized, but any value of a byte is valid for u8.
-            core::slice::from_raw_parts(self.ptr.as_ptr(), self.pages * PAGE_SIZE)
+            // SAFETY: `aligned` lies within the region UEFI allocated for us,
+            // which is valid for `pages` pages. The resulting slice lifetime is
+            // tied to &self, so it cannot outlive the allocation. The memory
+            // might be uninitialized, but any byte value is valid for u8.
+            core::slice::from_raw_parts(self.aligned.as_ptr(), self.pages * PAGE_SIZE)
         }
     }
 
     fn as_u8_slice_mut(&mut self) -> &mut [u8] {
         unsafe {
-            // SAFETY: `ptr` was allocated with `boot::allocate_pages` and is valid for `pages` pages.
-            // The resulting slice will have a lifetime tied to &mut self, so it cannot outlive the allocation.
-            // The memory might be uninitialized, but any value of a byte is valid for u8.
-            core::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.pages * PAGE_SIZE)
+            // SAFETY: `aligned` lies within the region UEFI allocated for us,
+            // which is valid for `pages` pages. The resulting slice lifetime is
+            // tied to &mut self, so it cannot outlive the allocation. The memory
+            // might be uninitialized, but any byte value is valid for u8.
+            core::slice::from_raw_parts_mut(self.aligned.as_ptr(), self.pages * PAGE_SIZE)
         }
     }
 }
@@ -108,13 +144,14 @@ impl Drop for PageAllocation {
         // See: https://github.com/rhboot/shim/blob/c4665d282072df2ed8ab6ae1d5fa0de41e5db02f/loader-proto.c#L194
         log::debug!("WORKAROUND: Clearing memory attributes before freeing pages");
         let _ = change_mem_attrs(
-            self.as_ptr() as u64..(self.as_ptr() as u64 + (self.pages * PAGE_SIZE) as u64),
+            self.raw.as_ptr() as u64
+                ..(self.raw.as_ptr() as u64 + (self.raw_pages * PAGE_SIZE) as u64),
             MemAttributes::empty(),
         );
 
         unsafe {
-            // SAFETY: `ptr` was allocated with `uefi::boot::allocate_pages` and is valid for `pages` pages
-            let _ = uefi::boot::free_pages(self.ptr, self.pages);
+            // SAFETY: `raw` was allocated with `uefi::boot::allocate_pages` and is valid for `raw_pages` pages.
+            let _ = uefi::boot::free_pages(self.raw, self.raw_pages);
         }
     }
 }

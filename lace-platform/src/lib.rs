@@ -18,6 +18,8 @@ pub mod bios;
 pub mod efi;
 #[cfg(feature = "mock")]
 pub mod mock;
+#[cfg(feature = "virt")]
+pub mod virt;
 
 #[cfg(feature = "bios")]
 use bios as p;
@@ -25,6 +27,8 @@ use bios as p;
 use efi as p;
 #[cfg(feature = "mock")]
 use mock as p;
+#[cfg(feature = "virt")]
+use virt as p;
 
 // Re-export platform error type
 pub use p::Error;
@@ -36,5 +40,8 @@ pub mod console;
 pub mod fs;
 pub mod hwid;
 pub mod linux;
+pub mod e820;
 pub mod mem;
+#[cfg(not(feature = "efi"))]
+mod memmap;
 pub mod tpm2;
