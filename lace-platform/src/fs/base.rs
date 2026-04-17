@@ -145,14 +145,28 @@ pub trait Filesystem {
 
 /// Represents an open file.
 pub trait File {
-    /// Read data from the file.
+    /// Read data from the file into `buf`. Returns the number of bytes read.
+    /// A short read does not necessarily indicate end-of-file.
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, FsError>;
-
-    /// Read the entire file into a vector.
-    fn read_to_end(&mut self) -> Result<Vec<u8>, FsError>;
 
     /// Get the size of the file.
     fn size(&mut self) -> u64;
+
+    /// Fill `buf` entirely from the file. Returns [`FsError::Io`] on a
+    /// short read. Callers choose their own backing storage (Vec for
+    /// small configs, PageAllocation for kernels/initrds); the file
+    /// itself never forces heap allocation.
+    fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), FsError> {
+        let mut read = 0;
+        while read < buf.len() {
+            let n = self.read(&mut buf[read..])?;
+            if n == 0 {
+                return Err(FsError::Invalid);
+            }
+            read += n;
+        }
+        Ok(())
+    }
 }
 
 /// Directory entry.

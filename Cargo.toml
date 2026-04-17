@@ -2,7 +2,9 @@
 [workspace]
 resolver = "2"
 members = [
+    "lace-drivers",
     "lace-platform",
+    "lace-platform/src/virt/bootblock",
     "lace-speedboot",
     "lace-stubble",
     "lace-util",
@@ -11,6 +13,7 @@ members = [
     "tools/collect-hwids",
     "tools/fakeedid",
     "tools/pewrap",
+    "tools/flashedit",
     "tools/xtask",
 ]
 
@@ -18,6 +21,12 @@ members = [
 version = "0.1.0"
 edition = "2024"
 license = "GPL-2.0-only OR GPL-3.0-only"
+
+[workspace.lints.rust]
+# `bios` and `virt` are custom targets defined under lace-platform.
+unexpected_cfgs = { level = "warn", check-cfg = [
+    'cfg(target_os, values("bios", "virt"))',
+] }
 
 [workspace.dependencies]
 bitflags = "2.11.0"
@@ -39,9 +48,3 @@ uefi = { version = "0.37.0" }
 uefi-raw = { version = "0.14.0" }
 zerocopy = "0.8.48"
 zip = { version = "8.4.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
-
-[profile.dev]
-panic = "abort"
-
-[profile.release]
-panic = "abort"

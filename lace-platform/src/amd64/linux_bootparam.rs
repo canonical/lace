@@ -4,6 +4,8 @@
 //! The canonical source for these is `arch/x86/include/uapi/asm/bootparam.h`
 //! in the Linux kernel source code.
 
+use crate::e820::E820Entry;
+
 /// Maximum number of E820 entries in the Linux boot parameters
 pub const E820_MAX_ENTRIES_ZEROPAGE: usize = 128;
 
@@ -42,7 +44,7 @@ pub struct BootParams {
     pub hdr: SetupHeader,
     pub _pad7: [u8; 0x290 - 0x1f1 - core::mem::size_of::<SetupHeader>()],
     pub edd_mbr_sig_buffer: [u32; 16],
-    pub e820_table: [BootE820Entry; E820_MAX_ENTRIES_ZEROPAGE],
+    pub e820_table: [E820Entry; E820_MAX_ENTRIES_ZEROPAGE],
     pub _pad8: [u8; 48],
     pub eddbuf: [u8; 496], // sizeof (struct edd_info) * 6
     pub _pad9: [u8; 276],
@@ -241,10 +243,3 @@ pub struct SetupIndirect {
     pub addr: u64,
 }
 
-#[derive(Clone, Copy, Debug, Default)]
-#[repr(C, packed)]
-pub struct BootE820Entry {
-    pub addr: u64,
-    pub size: u64,
-    pub type_: u32,
-}

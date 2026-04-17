@@ -369,9 +369,6 @@ def build_and_inject_stubble(args, config):
             "build",
             "-p",
             "lace-stubble",
-            "--no-default-features",
-            "--features",
-            "efi",
             "--target",
             stubble_target,
         ],
@@ -474,9 +471,6 @@ def build_and_inject_speedboot(args, config):
             "build",
             "-p",
             "lace-speedboot",
-            "--no-default-features",
-            "--features",
-            "efi",
             "--target",
             f"{config['arch']}-unknown-uefi",
         ],
@@ -521,6 +515,71 @@ def build_and_inject_speedboot(args, config):
     print("Injection complete")
 
 
+def build_and_inject_virt(args, config, package):
+    """Build and inject a virt platform payload into a CBFS flash image"""
+
+    if config["arch"] != "x86_64":
+        raise ValueError(f"{package} only supports x86_64 on virt")
+
+    print(f"Building {package} for virt platform...")
+
+    # 1. Build bootblock
+    subprocess.run(
+        [
+            "cargo", "build", "--release",
+            "--manifest-path", "lace-platform/src/virt/bootblock/Cargo.toml",
+            "--target", "lace-platform/src/virt/bootblock/i686-bootblock.json",
+            "-Z", "build-std=core,alloc",
+            "-Z", "build-std-features=compiler-builtins-mem",
+            "-Z", "json-target-spec",
+        ],
+        check=True,
+    )
+
+    # 2. Convert bootblock ELF to flat binary
+    subprocess.run(
+        [
+            "llvm-objcopy", "-O", "binary",
+            "target/i686-bootblock/release/virt-bootblock",
+            os.path.join(args.dir, "bootblock.bin"),
+        ],
+        check=True,
+    )
+
+    # 3. Build firmware
+    subprocess.run(
+        [
+            "cargo", "build", "-p", package,
+            "--target", "lace-platform/src/virt/x86_64-virt.json",
+            "-Z", "json-target-spec",
+            "-Z", "build-std=core,alloc",
+            "-Z", "build-std-features=compiler-builtins-mem",
+        ],
+        check=True,
+    )
+
+    firmware_elf = f"target/x86_64-virt/debug/{package}"
+    if not os.path.exists(firmware_elf):
+        raise RuntimeError(f"Build failed: {firmware_elf} not found")
+
+    # 4. Create CBFS flash image
+    flash_image = os.path.join(args.dir, "flash.bin")
+    subprocess.run(
+        [
+            "cargo", "run", "-p", "flashedit", "--",
+            "create",
+            "-o", flash_image,
+            "-s", "16M",
+            "-b", os.path.join(args.dir, "bootblock.bin"),
+            "-f", f"fallback/payload={firmware_elf}",
+        ],
+        check=True,
+    )
+
+    print(f"Flash image: {flash_image}")
+    print("Injection complete")
+
+
 def build_and_inject_bios(args, config, package):
     """Build and inject a BIOS payload (lace-speedboot)"""
 
@@ -537,9 +596,6 @@ def build_and_inject_bios(args, config, package):
         "build",
         "-p",
         package,
-        "--no-default-features",
-        "--features",
-        "bios",
         "--target",
         "lace-platform/src/bios/x86_64-bios.json",
         "-Z", "json-target-spec",
@@ -662,6 +718,8 @@ def do_start(args):
             build_and_inject_speedboot(args, config)
         case "speedboot-bios":
             build_and_inject_bios(args, config, package="lace-speedboot")
+        case "speedboot-virt":
+            build_and_inject_virt(args, config, package="lace-speedboot")
         case _:
             raise ValueError(f"Unknown app: {args.app}")
 
@@ -725,7 +783,29 @@ def do_start(args):
             config["ram"],
         ]
 
-        if args.app in ["speedboot-bios"]:
+        if args.gdb:
+            qemu_cmd.extend(["-s", "-S"])
+            # Force TCG when debugging since KVM does not support single-step
+            # or proper breakpoints in real mode.
+            qemu_cmd[qemu_cmd.index("-machine") + 1] = qemu_cmd[
+                qemu_cmd.index("-machine") + 1
+            ].replace(f"accel={best_vm_accel(config['arch'])}", "accel=tcg")
+            print("QEMU gdb stub enabled on tcp::1234 (TCG mode)")
+
+        if args.app in ["speedboot-virt"]:
+            # Virt platform: CBFS flash as BIOS, modern virtio-blk
+            qemu_cmd.extend(
+                [
+                    "-bios",
+                    os.path.join(args.dir, "flash.bin"),
+                    "-blockdev",
+                    f"driver={config['disk']['format']},node-name=disk,file.driver=file,file.filename="
+                    + os.path.join(args.dir, config["disk"]["file"]),
+                    "-device",
+                    "virtio-blk-pci,drive=disk,disable-legacy=on",
+                ]
+            )
+        elif args.app in ["speedboot-bios"]:
             # Legacy BIOS boot
             qemu_cmd.extend(
                 [
@@ -868,7 +948,10 @@ def main():
 
     start_cmd = cmds.add_parser("start", help="Start the VM")
     start_cmd.add_argument(
-        "--app", type=str, default="stubble", help="App to run (stubble, speedboot, speedboot-bios)"
+        "--app", type=str, default="stubble", help="App to run (stubble, speedboot, speedboot-bios, speedboot-virt)"
+    )
+    start_cmd.add_argument(
+        "--gdb", action="store_true", help="Enable QEMU gdb stub on tcp::1234"
     )
 
     args = parser.parse_args()

@@ -123,24 +123,6 @@ impl File for UefiFile {
         Ok(self.file.read(buf)?)
     }
 
-    fn read_to_end(&mut self) -> Result<Vec<u8>, FsError> {
-        let mut info_buf = vec![0u8; 256];
-        let info = self
-            .file
-            .get_info::<uefi::proto::media::file::FileInfo>(&mut info_buf)
-            .map_err(|e| FsError::Io(e.to_err_without_payload()))?;
-        let size = info.file_size() as usize;
-        let mut buf = vec![0u8; size];
-        let bytes_read = self.file.read(&mut buf)?;
-        if bytes_read != size {
-            return Err(FsError::Io(uefi::Error::new(
-                uefi::Status::DEVICE_ERROR,
-                (),
-            )));
-        }
-        Ok(buf)
-    }
-
     fn size(&mut self) -> u64 {
         let mut info_buf = vec![0u8; 256];
         self.file

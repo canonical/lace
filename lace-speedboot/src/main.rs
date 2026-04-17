@@ -6,8 +6,8 @@
 //! This application scans all available disks for GRUB configuration files,
 //! extracts menu entries, displays them to the user, and boots the selected entry.
 
-#![cfg_attr(not(feature = "mock"), no_std)]
-#![cfg_attr(not(feature = "mock"), no_main)]
+#![cfg_attr(not(unix), no_std)]
+#![cfg_attr(not(unix), no_main)]
 
 mod bootflows;
 mod text;

@@ -45,24 +45,36 @@ jobs:
         run: cargo clippy --workspace -- -D warnings
 
   clippy-platform:
-    name: "Clippy: ${{ matrix.package }} (${{ matrix.feature }})"
+    name: "Clippy: ${{ matrix.package }} (${{ matrix.platform }})"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         package: [lace-platform, lace-stubble, lace-speedboot]
-        feature: [efi, bios]
+        include:
+          - platform: efi
+            target: x86_64-unknown-uefi
+            toolchain: stable
+            build_std: ""
+          - platform: bios
+            target: lace-platform/src/bios/x86_64-bios.json
+            toolchain: nightly
+            build_std: "-Zbuild-std=core,compiler_builtins,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec"
+          - platform: virt
+            target: lace-platform/src/virt/x86_64-virt.json
+            toolchain: nightly
+            build_std: "-Zbuild-std=core,compiler_builtins,alloc -Zbuild-std-features=compiler-builtins-mem -Zjson-target-spec"
     steps:
       - uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
-          components: clippy
+          toolchain: ${{ matrix.toolchain }}
+          components: clippy, rust-src
 
       - name: Run clippy
-        run: cargo clippy -p ${{ matrix.package }} --no-default-features --features ${{ matrix.feature }} -- -D warnings
+        run: cargo clippy -p ${{ matrix.package }} --target ${{ matrix.target }} ${{ matrix.build_std }} -- -D warnings
 
   test:
     name: Unit tests

@@ -27,7 +27,17 @@ fn try_apply(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream> 
             "#[entry] does not accept any arguments",
         ));
     }
-    let func: ItemFn = syn::parse2(input)?;
+    let mut func: ItemFn = syn::parse2(input)?;
+    // On hosted targets, prepend a shared-init call to the user's body
+    // so mock-side initialization runs before any application code.
+    // No-op on bios/efi/virt, where the platform entry stub is
+    // responsible for its own early init before calling `lace_app_main`.
+    let original_block = func.block;
+    func.block = syn::parse_quote!({
+        #[cfg(unix)]
+        ::lace_platform::mock::init();
+        #original_block
+    });
     Ok(quote! {
         #[unsafe(export_name = "lace_app_main")]
         #func

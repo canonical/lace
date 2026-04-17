@@ -70,7 +70,8 @@ impl BootFlow for BlsBootFlow {
                 // Read and parse the BLS file
                 match filesystem.borrow_mut().open_file(&file_path) {
                     Ok(mut file) => {
-                        if let Ok(content_bytes) = file.read_to_end()
+                        let mut content_bytes = alloc::vec![0u8; file.size() as usize];
+                        if file.read_exact(&mut content_bytes).is_ok()
                             && let Ok(content) = core::str::from_utf8(&content_bytes)
                         {
                             let bls_entry = parse_bls_entry(content);

@@ -2,8 +2,12 @@
 // Copyright (C) 2025, Canonical Ltd.
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! Platform abstractions for Lace.
+//!
+//! The active platform is chosen from the build target's `target_os`:
+//! `uefi` → EFI, `bios` → legacy BIOS, `virt` → QEMU virt firmware,
+//! anything else → the hosted mock platform used for tests.
 
-#![cfg_attr(not(feature = "mock"), no_std)]
+#![cfg_attr(not(unix), no_std)]
 
 extern crate alloc;
 
@@ -12,19 +16,23 @@ extern crate alloc;
 pub mod amd64;
 
 // Platform implementations
-#[cfg(feature = "bios")]
+#[cfg(target_os = "bios")]
 pub mod bios;
-#[cfg(feature = "efi")]
+#[cfg(target_os = "uefi")]
 pub mod efi;
-#[cfg(feature = "mock")]
+#[cfg(unix)]
 pub mod mock;
+#[cfg(target_os = "virt")]
+pub mod virt;
 
-#[cfg(feature = "bios")]
+#[cfg(target_os = "bios")]
 use bios as p;
-#[cfg(feature = "efi")]
+#[cfg(target_os = "uefi")]
 use efi as p;
-#[cfg(feature = "mock")]
+#[cfg(unix)]
 use mock as p;
+#[cfg(target_os = "virt")]
+use virt as p;
 
 // Re-export platform error type
 pub use p::Error;
@@ -33,8 +41,11 @@ pub use p::Error;
 pub use lace_util_derive::entry;
 
 pub mod console;
+pub mod e820;
 pub mod fs;
 pub mod hwid;
 pub mod linux;
 pub mod mem;
+#[cfg(any(target_os = "bios", target_os = "virt"))]
+mod memmap;
 pub mod tpm2;

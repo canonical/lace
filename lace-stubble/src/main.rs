@@ -3,13 +3,13 @@
 // Authors: Mate Kukri <mate.kukri@canonical.com>
 //! Stubble main application
 
-#![cfg_attr(not(feature = "mock"), no_std)]
-#![cfg_attr(not(feature = "mock"), no_main)]
+#![cfg_attr(not(unix), no_std)]
+#![cfg_attr(not(unix), no_main)]
 
-#[cfg(not(feature = "mock"))]
+#[cfg(not(unix))]
 extern crate alloc;
 
-#[cfg(feature = "efi")]
+#[cfg(target_os = "uefi")]
 #[lace_platform::entry]
 fn main() -> Result<(), lace_platform::Error> {
     // Parse own loaded image
@@ -56,7 +56,7 @@ fn main() -> Result<(), lace_platform::Error> {
     unreachable!()
 }
 
-#[cfg(not(feature = "efi"))]
+#[cfg(not(target_os = "uefi"))]
 #[lace_platform::entry]
 fn main() -> Result<(), lace_platform::Error> {
     panic!("stubble image booting is not implemented on non-EFI platforms");
