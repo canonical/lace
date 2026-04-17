@@ -8,11 +8,9 @@ license.workspace = true
 lace-util = { path = "../lace-util", default-features = false }
 lace-platform = { path = "../lace-platform", default-features = false }
 log.workspace = true
-uefi = { workspace = true, optional = true }
 
-[features]
-default = ["mock"]
-efi = ["lace-platform/efi", "dep:uefi"]
-bios = ["lace-platform/bios"]
-mock = ["lace-platform/mock"]
-virt = ["lace-platform/virt"]
+[target.'cfg(target_os = "uefi")'.dependencies]
+uefi = { workspace = true }
+
+[lints]
+workspace = true

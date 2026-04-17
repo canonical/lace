@@ -28,13 +28,13 @@ fn try_apply(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream> 
         ));
     }
     let mut func: ItemFn = syn::parse2(input)?;
-    // Under the `mock` feature, prepend a shared-init call to the user's
-    // body so mock-side initialization runs before any application code.
-    // This is a no-op under bios/efi, where the platform entry stub is
+    // On hosted targets, prepend a shared-init call to the user's body
+    // so mock-side initialization runs before any application code.
+    // No-op on bios/efi/virt, where the platform entry stub is
     // responsible for its own early init before calling `lace_app_main`.
     let original_block = func.block;
     func.block = syn::parse_quote!({
-        #[cfg(feature = "mock")]
+        #[cfg(unix)]
         ::lace_platform::mock::init();
         #original_block
     });

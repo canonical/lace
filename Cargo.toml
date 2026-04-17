@@ -22,6 +22,12 @@ version = "0.1.0"
 edition = "2024"
 license = "GPL-2.0-only OR GPL-3.0-only"
 
+[workspace.lints.rust]
+# `bios` and `virt` are custom targets defined under lace-platform.
+unexpected_cfgs = { level = "warn", check-cfg = [
+    'cfg(target_os, values("bios", "virt"))',
+] }
+
 [workspace.dependencies]
 bitflags = "2.11.0"
 clap = { version = "4.6.0", features = ["derive", "wrap_help"] }

@@ -159,6 +159,7 @@ impl MemoryMap {
     }
 
     /// Populate from an iterator of raw e820 entries.
+    #[allow(dead_code)] // used by BIOS; virt streams entries one by one
     pub fn add_e820_entries(&mut self, entries: impl Iterator<Item = E820Entry>) {
         for e in entries {
             self.add_region(e.base, e.length, e.type_.into());
@@ -170,6 +171,7 @@ impl MemoryMap {
     /// not just `Usable`; otherwise carving `AcpiNvs` at the top of RAM
     /// would make this return an end *below* the carved range and callers
     /// (MMIO window placement) would collide with it.
+    #[allow(dead_code)] // used by virt to place PCI MMIO above RAM
     pub fn ram_end_below(&self, limit: u64) -> u64 {
         let mut end = 0u64;
         for r in self.regions() {

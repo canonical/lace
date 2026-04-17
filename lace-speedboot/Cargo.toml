@@ -10,9 +10,5 @@ lace-platform = { version = "0.1.0", path = "../lace-platform", default-features
 lace-stubble = { version = "0.1.0", path = "../lace-stubble", default-features = false }
 log.workspace = true
 
-[features]
-default = ["mock"]
-efi = ["lace-platform/efi", "lace-stubble/efi"]
-bios = ["lace-platform/bios", "lace-stubble/bios"]
-mock = ["lace-platform/mock", "lace-stubble/mock"]
-virt = ["lace-platform/virt", "lace-stubble/virt"]
+[lints]
+workspace = true

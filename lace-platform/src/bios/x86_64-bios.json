@@ -9,6 +9,7 @@
   "linker": "rust-lld",
   "linker-flavor": "gnu-lld",
   "llvm-target": "x86_64-unknown-none-elf",
+  "os": "bios",
   "max-atomic-width": 64,
   "metadata": {
     "description": "Freestanding/bare-metal x86_64 softfloat for BIOS bootloader",
