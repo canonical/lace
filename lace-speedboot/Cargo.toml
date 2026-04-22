@@ -9,6 +9,8 @@ lace-util = { version = "0.1.0", path = "../lace-util", default-features = false
 lace-platform = { version = "0.1.0", path = "../lace-platform", default-features = false, features = ["ext4"] }
 lace-stubble = { version = "0.1.0", path = "../lace-stubble", default-features = false }
 log.workspace = true
+toml.workspace = true
+serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
 
 [features]
 default = ["mock"]
