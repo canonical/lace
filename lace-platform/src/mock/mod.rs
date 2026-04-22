@@ -20,3 +20,9 @@ impl std::error::Error for Error {}
 pub fn init() {
     crate::console::init();
 }
+
+/// Mock has no persistent platform storage, so there's no
+/// `speedboot.toml` to return.
+pub fn speedboot_toml() -> Option<alloc::vec::Vec<u8>> {
+    None
+}

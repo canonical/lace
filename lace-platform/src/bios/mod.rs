@@ -35,6 +35,12 @@ fn panic_handler(info: &core::panic::PanicInfo) -> ! {
     crate::console::panic(info)
 }
 
+/// Reading `speedboot.toml` from the BIOS boot partition is not yet
+/// implemented.
+pub fn speedboot_toml() -> Option<alloc::vec::Vec<u8>> {
+    None
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn lace_platform_bios_entry() -> ! {
     mem::init();

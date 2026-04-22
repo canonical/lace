@@ -29,6 +29,11 @@ use mock as p;
 // Re-export platform error type
 pub use p::Error;
 
+// Re-export the platform-provided `speedboot.toml` lookup. The file
+// is always optional: EFI reads it from the ESP next to
+// `speedboot.efi`, BIOS from the boot partition, mock returns `None`.
+pub use p::speedboot_toml;
+
 // Re-export entry point macro
 pub use lace_util_derive::entry;
 

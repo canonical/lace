@@ -20,6 +20,12 @@ fn panic_handler(info: &core::panic::PanicInfo) -> ! {
     crate::console::panic(info)
 }
 
+/// Reading `speedboot.toml` from the ESP next to `speedboot.efi` is
+/// not yet implemented.
+pub fn speedboot_toml() -> Option<alloc::vec::Vec<u8>> {
+    None
+}
+
 /// Opens the first instance of the given protocol in exclusive mode.
 fn open_first_protocol_exclusive<T: uefi::proto::Protocol>()
 -> Result<uefi::boot::ScopedProtocol<T>, uefi::Error> {
