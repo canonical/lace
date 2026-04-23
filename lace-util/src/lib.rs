@@ -13,6 +13,7 @@ pub mod chid;
 pub mod chid_mapping;
 pub mod chid_matcher;
 pub mod edid;
+pub mod elf64;
 #[cfg(feature = "grub")]
 pub mod grub;
 pub mod peimage;
