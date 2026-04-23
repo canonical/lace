@@ -11,4 +11,5 @@ extern crate alloc;
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 pub mod x86;
 
+pub mod fw_cfg;
 pub mod pci;
