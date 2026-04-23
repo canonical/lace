@@ -2,6 +2,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "lace-drivers",
     "lace-platform",
     "lace-speedboot",
     "lace-stubble",
