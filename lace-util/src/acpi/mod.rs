@@ -8,6 +8,7 @@
 
 use zerocopy::{FromBytes, Immutable, KnownLayout};
 
+pub mod mcfg;
 
 /// ACPI RSDP v1 (revision 0), 20 bytes.
 #[repr(C, packed)]
