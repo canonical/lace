@@ -13,3 +13,4 @@ pub mod x86;
 
 pub mod fw_cfg;
 pub mod pci;
+pub mod virtio;
