@@ -16,6 +16,13 @@ They use the following library crates:
 * `lace-util` - Platform-independent utilities
 * `lace-util-derive` - Platform-independent macros
 
+### Rust Edition
+
+The workspace uses **Rust edition 2024**. Notably, `size_of`,
+`size_of_val`, `align_of`, and `align_of_val` are in the prelude and
+do **not** need to be imported from `core::mem` / `std::mem`. Do not
+flag unqualified uses of these as missing imports.
+
 ### Build System
 
 The project uses a **Cargo workspace**.
