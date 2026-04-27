@@ -20,13 +20,13 @@ edition = "2024"
 license = "GPL-2.0-only OR GPL-3.0-only"
 
 [workspace.dependencies]
-bitflags = "2.11.0"
-clap = { version = "4.6.0", features = ["derive", "wrap_help"] }
+bitflags = "2.11.1"
+clap = { version = "4.6.1", features = ["derive", "wrap_help"] }
 clap_mangen = "0.3"
 ext4-view = { version = "0.9", default-features = false }
 fdt = { version = "0.1.5", default-features = false }
 libc = "0.2"
-linked_list_allocator = { version = "0.10.5" }
+linked_list_allocator = { version = "0.10.6" }
 log = { version = "0.4", default-features = false }
 proc-macro2 = "1.0"
 quote = "1.0"
@@ -38,7 +38,7 @@ syn = { version = "2.0", features = ["full", "extra-traits"] }
 uefi = { version = "0.37.0" }
 uefi-raw = { version = "0.14.0" }
 zerocopy = "0.8.48"
-zip = { version = "8.4.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [profile.dev]
 panic = "abort"
