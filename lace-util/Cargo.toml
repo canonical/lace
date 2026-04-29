@@ -11,6 +11,7 @@ libc = { workspace = true, optional = true }
 zerocopy = { workspace = true, features = ["derive"] }
 
 [features]
-default = ["std", "grub"]
+default = ["firmware", "std", "grub"]
+firmware = []
 std = ["dep:libc"]
 grub = []
