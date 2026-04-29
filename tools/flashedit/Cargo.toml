@@ -1,0 +1,10 @@
+[package]
+name = "flashedit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+clap.workspace = true
+lace-util = { path = "../../lace-util", default-features = false }
+zerocopy = { workspace = true, features = ["derive"] }

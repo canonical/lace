@@ -6,11 +6,14 @@
 
 extern crate alloc;
 
+pub mod acpi;
 pub mod bls;
+pub mod cbfs;
 pub mod chid;
 pub mod chid_mapping;
 pub mod chid_matcher;
 pub mod edid;
+pub mod elf64;
 #[cfg(feature = "grub")]
 pub mod grub;
 pub mod peimage;

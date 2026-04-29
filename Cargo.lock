@@ -217,6 +217,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "784a4df722dc6267a04af36895398f59d21d07dce47232adf31ec0ff2fa45e67"
 
 [[package]]
+name = "flashedit"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "lace-util",
+ "zerocopy",
+]
+
+[[package]]
 name = "flate2"
 version = "1.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -259,6 +268,15 @@ name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
+
+[[package]]
+name = "lace-drivers"
+version = "0.1.0"
+dependencies = [
+ "lace-util",
+ "log",
+ "zerocopy",
+]
 
 [[package]]
 name = "lace-platform"
