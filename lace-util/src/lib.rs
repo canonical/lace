@@ -9,6 +9,7 @@ extern crate alloc;
 #[cfg(feature = "firmware")]
 pub mod acpi;
 pub mod bls;
+pub mod cbfs;
 pub mod chid;
 pub mod chid_mapping;
 pub mod chid_matcher;
