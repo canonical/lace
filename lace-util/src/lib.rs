@@ -67,6 +67,20 @@ macro_rules! align_up {
     }};
 }
 
+/// Align `value` up to `alignment`, returning `None` on overflow or if
+/// `alignment` is zero.
+#[macro_export]
+macro_rules! align_up_checked {
+    ($val:expr, $align:expr $(,)?) => {{
+        let align = $align;
+        if align == 0 {
+            None
+        } else {
+            ($val).checked_add(align - 1).map(|v| v / align * align)
+        }
+    }};
+}
+
 #[macro_export]
 macro_rules! align_down {
     ($val:expr, $bound:expr $(,)?) => {{
@@ -87,6 +101,38 @@ macro_rules! count_blocks_aligned_down {
     ($val:expr, $block_size:expr $(,)?) => {
         $val / $block_size
     };
+}
+
+/// Infallible `u32` → `usize` widening on 32-bit and 64-bit targets.
+///
+/// Provides `.as_usize()` on `u32` so that index expressions read
+/// naturally without `as` casts.  The trait (and the crate) simply
+/// will not compile on a hypothetical 16-bit target where the
+/// conversion would be lossy.
+#[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
+pub trait UsizeIsAtLeastU32 {
+    /// Widen to `usize` (infallible on 32- and 64-bit platforms).
+    #[allow(clippy::wrong_self_convention)]
+    fn as_usize(self) -> usize;
+}
+
+#[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
+impl UsizeIsAtLeastU32 for u32 {
+    #[inline(always)]
+    fn as_usize(self) -> usize {
+        self as usize
+    }
+}
+
+/// Convert a `usize` to `u32`, panic if the value exceeds `u32::MAX`.
+///
+/// This is intended for use in `const` contexts -- where it will be
+/// evaluated at compile-time, and fail to compile if the value exceeds
+/// `u32::MAX`.
+#[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
+pub const fn const_u32(v: usize) -> u32 {
+    assert!(v <= u32::MAX as usize);
+    v as u32
 }
 
 #[repr(C)]
@@ -375,6 +421,18 @@ mod test {
         assert_eq!(align_up!(12u32, 4u32), 12);
         assert_eq!(align_up!(0u32, 4u32), 0);
         assert_eq!(align_up!(1u32, 1u32), 1);
+    }
+
+    #[test]
+    fn test_align_up_checked() {
+        assert_eq!(align_up_checked!(10usize, 4usize), Some(12));
+        assert_eq!(align_up_checked!(12usize, 4usize), Some(12));
+        assert_eq!(align_up_checked!(0usize, 4usize), Some(0));
+        assert_eq!(align_up_checked!(1usize, 1usize), Some(1));
+        assert_eq!(align_up_checked!(usize::MAX, 2usize), None);
+        // Also works with u32
+        assert_eq!(align_up_checked!(10u32, 4u32), Some(12u32));
+        assert_eq!(align_up_checked!(u32::MAX, 2u32), None);
     }
 
     #[test]
