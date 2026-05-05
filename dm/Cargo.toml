@@ -1,0 +1,7 @@
+[package]
+name = "dm"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+dm-derive = { path = "../dm-derive" }
