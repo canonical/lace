@@ -3,7 +3,6 @@
 resolver = "2"
 members = [
     "dm",
-    "dm-derive",
     "lace-platform",
     "lace-speedboot",
     "lace-stubble",
