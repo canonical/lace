@@ -10,6 +10,7 @@ members = [
     "lace-util-derive-impl",
     "tools/collect-hwids",
     "tools/fakeedid",
+    "tools/flashedit",
     "tools/pewrap",
     "tools/xtask",
 ]
