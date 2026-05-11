@@ -20,6 +20,7 @@ to the Canonical CLA. See the file `CONTRIBUTING.md` for details.
 
 You may want to use development tools:
 * `scripts/vm_manage.py` - a helper tool to setup and run test VMs
+* `scripts/build_efi.py` - builds EFI binaries for Lace applications
 * `tools/fakeedid` - a helper tool to fake some EDID data in a test VM
 
 # Discussions
