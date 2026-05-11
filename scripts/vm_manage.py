@@ -5,17 +5,30 @@
 
 import argparse
 import copy
-import guestfs
 import json
 import os
-import pefile
 import platform
-import requests
 import shutil
 import struct
 import subprocess
 import time
 import uuid
+
+import guestfs
+import pefile
+import requests
+
+# pylint: disable=consider-using-with
+# pylint: disable=duplicate-code
+# pylint: disable=line-too-long
+# pylint: disable=missing-class-docstring
+# pylint: disable=missing-function-docstring
+# pylint: disable=raise-missing-from
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-positional-arguments
+# pylint: disable=too-many-statements
 
 # Enable DEBUG mode
 DEBUG = False
@@ -60,6 +73,18 @@ VM_DEFAULTS = {
             "vars": "AAVMF_VARS.fd",
         },
     },
+    "riscv64": {
+        "arch": "riscv64",
+        "machine": "virt",
+        "cpu": {
+            "model": "rva23s64",
+        },
+        "fw": {
+            "dir": "/usr/share/qemu-efi-riscv64",
+            "code": "RISCV_VIRT_CODE.fd",
+            "vars": "RISCV_VIRT_VARS.fd",
+        },
+    },
 }
 
 # EFI system partition type GUID
@@ -78,6 +103,7 @@ ssh_pwauth: True
 EFI_SUFFIXES = {
     "x86_64": "X64.EFI",
     "aarch64": "AA64.EFI",
+    "riscv64": "RISCV64.EFI",
 }
 
 
@@ -96,7 +122,7 @@ class GPTPartition:
             raise ValueError("Partition entry must be at least 128 bytes")
 
         type_guid_bytes = entry_bytes[:16]
-        if type_guid_bytes == b'\x00' * 16:
+        if type_guid_bytes == b"\x00" * 16:
             return None
 
         unique_guid_bytes = entry_bytes[16:32]
@@ -106,7 +132,7 @@ class GPTPartition:
         name_bytes = entry_bytes[56:128]
 
         # Decode name (UTF-16LE, null-terminated)
-        name = name_bytes.decode('utf-16-le').split('\x00')[0]
+        name = name_bytes.decode("utf-16-le").split("\x00")[0]
 
         type_guid = uuid.UUID(bytes_le=type_guid_bytes)
         unique_guid = uuid.UUID(bytes_le=unique_guid_bytes)
@@ -188,6 +214,8 @@ def ubuntu_cloud_url(release, arch):
         arch = "amd64"
     elif arch == "aarch64":
         arch = "arm64"
+    elif arch == "riscv64":
+        arch = "riscv64"
     else:
         raise ValueError(f"Unsupported architecture for Ubuntu cloud image: {arch}")
 
@@ -218,6 +246,41 @@ def best_vm_accel(vm_arch):
     if platform.machine() == vm_arch:
         return "kvm"  # Use hardware acceleration if host and target arch match
     return "tcg"  # Use software emulation if host and target arch differ
+
+
+def disk_device_for_arch(arch):
+    """Return a virtio block device suitable for the target architecture."""
+    if arch == "riscv64":
+        return "virtio-blk-device"
+    return "virtio-blk-pci"
+
+
+def efi_build_target(arch):
+    """Return the Rust target triple used to build EFI payloads."""
+    if arch == "riscv64":
+        return "riscv64imac-unknown-none-elf"
+    return f"{arch}-unknown-uefi"
+
+
+def build_efi_binary(package, arch):
+    """Build an EFI binary for the given package and architecture."""
+    scripts_dir = os.path.dirname(os.path.abspath(__file__))
+    subprocess.run(
+        [
+            "python3",
+            os.path.join(scripts_dir, "build_efi.py"),
+            "--package",
+            package,
+            "--arch",
+            arch,
+        ],
+        check=True,
+    )
+
+    efi_path = os.path.join("target", efi_build_target(arch), "debug", f"{package}.efi")
+    if not os.path.exists(efi_path):
+        raise RuntimeError(f"Build failed: {efi_path} not found")
+    return efi_path
 
 
 def create_disk_image(args):
@@ -362,21 +425,7 @@ def build_and_inject_stubble(args, config):
     """Build lace-stubble and inject it into the VM disk image"""
 
     # Build lace-stubble
-    stubble_target = f"{config['arch']}-unknown-uefi"
-    subprocess.run(
-        [
-            "cargo",
-            "build",
-            "-p",
-            "lace-stubble",
-            "--no-default-features",
-            "--features",
-            "efi",
-            "--target",
-            stubble_target,
-        ],
-        check=True,
-    )
+    stubble_efi_path = build_efi_binary("lace-stubble", config["arch"])
 
     # Open disk image for read/write
     disk_image_path = os.path.join(args.dir, "disk.img")
@@ -423,9 +472,6 @@ def build_and_inject_stubble(args, config):
         )
 
     # Create stubble EFI binary
-    stubble_efi_path = os.path.join(
-        "target", stubble_target, "debug", "lace-stubble.efi"
-    )
     output_efi_path = os.path.join(args.dir, "stubble.efi")
     pewrap_cmd = [
         "cargo",
@@ -468,22 +514,7 @@ def build_and_inject_speedboot(args, config):
     """Replace BOOT{EFI_SUFFIXES[config['arch']]}.efi with lace-speedboot"""
 
     print("Building lace-speedboot...")
-    subprocess.run(
-        [
-            "cargo",
-            "build",
-            "-p",
-            "lace-speedboot",
-            "--no-default-features",
-            "--features",
-            "efi",
-            "--target",
-            f"{config['arch']}-unknown-uefi",
-        ],
-        check=True,
-    )
-
-    speedboot_path = f"target/{config['arch']}-unknown-uefi/debug/lace-speedboot.efi"
+    speedboot_path = build_efi_binary("lace-speedboot", config["arch"])
     if not os.path.exists(speedboot_path):
         raise RuntimeError(f"Build failed: {speedboot_path} not found")
 
@@ -542,7 +573,8 @@ def build_and_inject_bios(args, config, package):
         "bios",
         "--target",
         "lace-platform/src/bios/x86_64-bios.json",
-        "-Z", "json-target-spec",
+        "-Z",
+        "json-target-spec",
         "-Z",
         "build-std=core,alloc,compiler_builtins",
         "-Z",
@@ -691,7 +723,7 @@ def do_start(args):
             "--log",
             "level=0",
         ]
-        print(f"Starting swtpm...")
+        print("Starting swtpm...")
         swtpm_proc = subprocess.Popen(swtpm_cmd)
 
         # Wait for socket
@@ -747,7 +779,7 @@ def do_start(args):
                     f"if=none,id=disk,format={config['disk']['format']},file="
                     + os.path.join(args.dir, config["disk"]["file"]),
                     "-device",
-                    "virtio-blk-pci,drive=disk,bootindex=1",
+                    f"{disk_device_for_arch(config['arch'])},drive=disk,bootindex=1",
                 ]
             )
 
@@ -808,7 +840,7 @@ def do_start(args):
                     "-drive",
                     f"file=fat:rw:{edid_drive},format=raw,if=none,id=edid_drive",
                     "-device",
-                    "virtio-blk-pci,drive=edid_drive,bootindex=0",
+                    f"{disk_device_for_arch(config['arch'])},drive=edid_drive,bootindex=0",
                 ]
             )
 
@@ -840,6 +872,7 @@ def do_start(args):
             swtpm_proc.terminate()
             swtpm_proc.wait()
 
+
 def main():
     """Main function to parse arguments and execute commands"""
 
@@ -868,7 +901,10 @@ def main():
 
     start_cmd = cmds.add_parser("start", help="Start the VM")
     start_cmd.add_argument(
-        "--app", type=str, default="stubble", help="App to run (stubble, speedboot, speedboot-bios)"
+        "--app",
+        type=str,
+        default="stubble",
+        help="App to run (stubble, speedboot, speedboot-bios)",
     )
 
     args = parser.parse_args()
