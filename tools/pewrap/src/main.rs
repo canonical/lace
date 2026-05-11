@@ -387,7 +387,8 @@ impl<'s> PeRebuilder<'s> {
                 unaligned_size_of_headers = min_section_virtual_address;
             }
         }
-        // Loaded image size starts with the size of headers rounded to section alignment
+        // Loaded image size is the maximum aligned end RVA across headers and
+        // all section mappings.
         self.nt_hdrs.optional_header.size_of_image = align_up!(
             unaligned_size_of_headers,
             self.nt_hdrs.optional_header.section_alignment
@@ -436,10 +437,17 @@ impl<'s> PeRebuilder<'s> {
             if (shdr.characteristics & SCN_CNT_UNINITIALIZED_DATA) > 0 {
                 self.nt_hdrs.optional_header.size_of_uninitialized_data += shdr.size_of_raw_data;
             }
-            self.nt_hdrs.optional_header.size_of_image += align_up!(
-                shdr.virtual_size,
+            let mapped_size = if shdr.virtual_size == 0 {
+                shdr.size_of_raw_data
+            } else {
+                shdr.virtual_size
+            };
+            let section_end = align_up!(
+                shdr.virtual_address.saturating_add(mapped_size),
                 self.nt_hdrs.optional_header.section_alignment
             );
+            self.nt_hdrs.optional_header.size_of_image =
+                self.nt_hdrs.optional_header.size_of_image.max(section_end);
         }
 
         Ok(())
