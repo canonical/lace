@@ -20,7 +20,7 @@ edition = "2024"
 license = "GPL-2.0-only OR GPL-3.0-only"
 
 [workspace.dependencies]
-bitflags = "2.11.1"
+bitflags = "2.13.0"
 clap = { version = "4.6.1", features = ["derive", "wrap_help"] }
 clap_mangen = "0.3"
 ext4-view = { version = "0.9", default-features = false }
@@ -32,12 +32,12 @@ proc-macro2 = "1.0"
 quote = "1.0"
 regex = "1.12.3"
 serde = { version = "1.0.228", features = ["serde_derive"] }
-serde_json = "1.0.149"
+serde_json = "1.0.150"
 spin = "0.10.0"
 syn = { version = "2.0", features = ["full", "extra-traits"] }
 uefi = { version = "0.37.0" }
 uefi-raw = { version = "0.14.0" }
-zerocopy = "0.8.48"
+zerocopy = "0.8.50"
 zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [profile.dev]
